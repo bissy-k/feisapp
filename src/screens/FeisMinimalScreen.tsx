@@ -5,10 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Music2,
-  Pause,
-  Play,
   Plus,
-  RotateCcw,
   X
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -33,6 +30,7 @@ type PracticePreset = {
 
 type DownloadedTrack = Track & {
   stem: string;
+  stems: string[];
   isDownloaded: true;
 };
 
@@ -50,9 +48,13 @@ type PracticeSelection =
 
 type SelectionView = 'root' | 'playlists' | 'tracks';
 
-const ACCENT = '#E08068';
-const BG = '#FBF3EE';
+const ACCENT = '#E56D56';
+const BG = '#FBF6F3';
 const CARD_BG = '#FFFFFF';
+const TEXT_PRIMARY = '#333333';
+const TEXT_SECONDARY = '#666666';
+const TEXT_TERTIARY = '#595959';
+const BORDER = '#D0D5DD';
 
 const PRACTICE_PRESETS: PracticePreset[] = [
   {
@@ -123,6 +125,7 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 194,
     artworkColor: '#F39A3D',
     stem: 'Drums',
+    stems: ['Drums', 'Piano', 'Bass'],
     isDownloaded: true
   },
   {
@@ -134,6 +137,7 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 208,
     artworkColor: '#E05D4F',
     stem: 'Drums',
+    stems: ['Drums', 'Piano', 'Bass'],
     isDownloaded: true
   },
   {
@@ -144,7 +148,8 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     bpm: 116,
     duration: 182,
     artworkColor: '#D7A40D',
-    stem: 'Full mix',
+    stem: 'Drums',
+    stems: ['Drums', 'Piano', 'Bass'],
     isDownloaded: true
   },
   {
@@ -156,6 +161,7 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 216,
     artworkColor: '#D33F74',
     stem: 'Drums',
+    stems: ['Drums', 'Piano', 'Bass'],
     isDownloaded: true
   },
   {
@@ -166,7 +172,8 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     bpm: 73,
     duration: 238,
     artworkColor: '#49A47A',
-    stem: 'Metronome stem',
+    stem: 'Drums',
+    stems: ['Drums', 'Piano', 'Bass'],
     isDownloaded: true
   },
   {
@@ -178,6 +185,7 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 205,
     artworkColor: '#6B58D6',
     stem: 'Drums',
+    stems: ['Drums', 'Piano', 'Bass'],
     isDownloaded: true
   }
 ];
@@ -245,6 +253,7 @@ export function FeisMinimalScreen({
     isPlaying: isTrackPlaying,
     playTrack,
     togglePlayPause,
+    stopTrack,
     progress,
     currentTime
   } = usePlayer();
@@ -252,10 +261,12 @@ export function FeisMinimalScreen({
   const [selection, setSelection] = useState<PracticeSelection | null>(null);
   const [showSelectionSheet, setShowSelectionSheet] = useState(false);
   const [showTimeSigPicker, setShowTimeSigPicker] = useState(false);
+  const [showStemPicker, setShowStemPicker] = useState(false);
   const [selectionView, setSelectionView] = useState<SelectionView>('root');
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(
     null
   );
+  const [selectedStems, setSelectedStems] = useState<string[]>(['Drums']);
 
   const selectedPreset =
   selection?.type === 'preset' ?
@@ -293,7 +304,12 @@ export function FeisMinimalScreen({
   '9/8' :
   '4/4';
   const isPracticePlaying = hasSelection ? isPlaying || isTrackPlaying : false;
-  const isCustomTempo = hasSelection && bpm !== defaultBpm;
+  const isSelectedTrackLoaded = currentTrack?.id === selectedTrack?.id;
+  const selectedTrackProgress = isSelectedTrackLoaded ? progress : 0;
+  const selectedTrackTime = isSelectedTrackLoaded ? currentTime : 0;
+  const selectedStemLabel =
+  selectedStems.length > 1 ? selectedStems.join(', ') : selectedStems[0] ?? 'Drums';
+  const isCustomTempo = hasSelection && defaultBpm > 0 && bpm !== defaultBpm;
 
   useEffect(() => {
     if (!selection) {
@@ -312,6 +328,7 @@ export function FeisMinimalScreen({
         signatureToBeats(selectedStyle?.timeSignature ?? '4/4')
       );
       setAccentFirstBeat(true);
+      setSelectedStems([selectedTrack.stem]);
     }
   }, [
     selection,
@@ -331,6 +348,10 @@ export function FeisMinimalScreen({
   }, [showSelectionSheet]);
 
   useEffect(() => {
+    if (!selectedTrack) setShowStemPicker(false);
+  }, [selectedTrack]);
+
+  useEffect(() => {
     return () => {
       stop();
     };
@@ -344,8 +365,8 @@ export function FeisMinimalScreen({
     if (!hasSelection) return;
 
     if (isPracticePlaying) {
-      if (isTrackPlaying) togglePlayPause();
-      if (isPlaying) togglePlay();
+      if (isTrackPlaying || currentTrack) stopTrack();
+      if (isPlaying) stop();
       return;
     }
 
@@ -368,6 +389,16 @@ export function FeisMinimalScreen({
     setShowSelectionSheet(false);
   };
 
+  const handleStemToggle = (stem: string) => {
+    setSelectedStems((prev) => {
+      if (prev.includes(stem)) {
+        const next = prev.filter((item) => item !== stem);
+        return next.length ? next : prev;
+      }
+      return [...prev, stem];
+    });
+  };
+
   const handleTrackSelect = (track: DownloadedTrack) => {
     setSelection({
       type: 'track',
@@ -386,11 +417,11 @@ export function FeisMinimalScreen({
         backgroundColor: BG
       }}>
       
-      <header className="px-5 pt-12 pb-2 flex items-center justify-between min-h-[44px] flex-shrink-0">
+      <header className="px-4 pt-[54px] pb-2 flex items-center justify-between h-[101px] flex-shrink-0 relative">
         {onClose ?
         <button
           onClick={onClose}
-          className="p-1 -ml-1 active:opacity-70"
+          className="p-1 -ml-1 active:opacity-70 z-10"
           aria-label="Back">
           
             <ChevronDown size={26} className="text-neutral-900" />
@@ -398,27 +429,32 @@ export function FeisMinimalScreen({
 
         <div className="w-7" />
         }
+        <div
+          className="absolute left-16 right-16 top-[70px] text-center text-[16px] font-semibold leading-5"
+          style={{
+            color: TEXT_PRIMARY
+          }}>
+          
+          Metronome
+        </div>
         <div className="w-7" />
       </header>
 
       <div
-        className="flex-1 overflow-y-auto px-5"
+        className="flex-1 overflow-y-auto scrollbar-none px-4"
         style={{
-          paddingBottom: bottomOffset + 104
+          paddingBottom: bottomOffset + 118
         }}>
         
-        <h1 className="text-[32px] font-bold tracking-tight text-neutral-900 mb-4">
-          Practice
-        </h1>
-
         <PracticeSelectionCard
           preset={selectedPreset}
           track={selectedTrack}
-          selectedStyleName={selectedStyle?.name}
+          progress={selectedTrackProgress}
+          currentTime={selectedTrackTime}
           onOpen={() => setShowSelectionSheet(true)} />
 
         <div
-          className={`flex flex-col items-center justify-center transition-opacity ${selectedTrack ? 'my-2' : 'my-4'} ${hasSelection ? 'opacity-100' : 'opacity-35'}`}>
+          className={`flex flex-col items-center justify-center transition-opacity ${selectedTrack ? 'mt-4' : 'mt-5'} ${hasSelection ? 'opacity-100' : 'opacity-50'}`}>
           
           <RotaryDial
             value={dialValue}
@@ -428,95 +464,100 @@ export function FeisMinimalScreen({
             onChange={(next) => {
               if (hasSelection) setBpm(next);
             }}
-            size={selectedTrack ? 220 : 260}
+            size={260}
             isPlaying={isPracticePlaying}
             isAccent={accentFirstBeat && currentBeat === 0}
             beatPulseKey={currentBeat}
             accentColor={ACCENT}>
             
             <div className="flex flex-col items-center justify-center pointer-events-none">
-              <div className="text-[13px] text-neutral-500 tabular-nums mb-1">
+              <div className="text-[12px] text-[#737373] tabular-nums mb-1 tracking-[0.3px]">
                 {speedPercent}%
               </div>
-              <div className={`${selectedTrack ? 'text-[58px]' : 'text-[68px]'} font-bold tracking-tighter text-neutral-900 leading-none`}>
+              <div className="text-[64px] font-medium tracking-[-3.2px] text-[#171717] leading-none">
                 {displayBpm}
               </div>
-              <div className="text-xs font-medium text-neutral-500 tracking-wide mt-1">
+              <div className="text-[12px] font-medium text-[#737373] tracking-[0.3px] mt-2">
                 BPM
               </div>
             </div>
           </RotaryDial>
 
-          <div className="h-7 mt-3 flex items-center">
-            <AnimatePresence>
-              {isCustomTempo &&
-              <motion.button
-                initial={{
-                  opacity: 0,
-                  y: -4
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0
-                }}
-                exit={{
-                  opacity: 0,
-                  y: -4
-                }}
-                onClick={handleResetTempo}
-                className="flex items-center gap-1.5 text-[14px] font-semibold active:opacity-70 px-2 py-1"
-                style={{
-                  color: ACCENT
-                }}>
-                
-                  <RotateCcw size={14} />
-                  Reset to original ({defaultBpm} BPM)
-                </motion.button>
-              }
-            </AnimatePresence>
-          </div>
+          {isCustomTempo ?
+          <button
+            onClick={handleResetTempo}
+            className="mt-4 text-[12px] font-semibold leading-[18px] focus:outline-none active:opacity-70"
+            style={{
+              color: ACCENT
+            }}>
+            
+            Reset to original ({defaultBpm} BPM)
+          </button> :
+          <div className="mt-4 text-[12px] leading-[18px] text-[#737373]">
+              Drag the dial to adjust tempo
+            </div>
+          }
         </div>
 
         <div
-          className={`${selectedTrack ? 'mt-2' : 'mt-4'} rounded-2xl overflow-hidden shadow-sm`}
+          className={`${selectedTrack ? 'mt-6' : 'mt-9'} rounded-xl overflow-hidden shadow-sm`}
           style={{
-            backgroundColor: CARD_BG
+          backgroundColor: CARD_BG
           }}>
           
+          {selectedTrack &&
+          <>
+              <button
+              onClick={() => setShowStemPicker(true)}
+              className="w-full h-[53px] px-4 flex items-center justify-between active:bg-neutral-50 focus:outline-none"
+              aria-label="Change track stem">
+              
+                <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
+                  Track stems
+                </span>
+                <span className="flex items-center gap-1 text-[12px] leading-4 tracking-[0.5px]" style={{ color: TEXT_TERTIARY }}>
+                  {selectedStemLabel}
+                  <ChevronRight size={16} style={{ color: ACCENT }} />
+                </span>
+              </button>
+              <div className="h-px" style={{ backgroundColor: BORDER }} />
+            </>
+          }
+
           <button
             onClick={() => setShowTimeSigPicker(true)}
-            className="w-full px-4 py-3.5 flex items-center justify-between active:bg-neutral-50"
+            className="w-full h-[53px] px-4 flex items-center justify-between active:bg-neutral-50 focus:outline-none"
             aria-label="Change time signature">
             
-            <span className="text-[15px] font-medium text-neutral-900">
+            <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
               Time signature
             </span>
             <span
-              className="flex items-center gap-1 text-[15px] font-semibold"
+              className="flex items-center gap-1 text-[12px] leading-4 tracking-[0.5px]"
               style={{
-                color: ACCENT
+                color: TEXT_TERTIARY
               }}>
               
               {timeSignatureLabel}
-              <ChevronRight size={15} />
+              <ChevronRight size={16} style={{ color: ACCENT }} />
             </span>
           </button>
-          <div className="h-px bg-neutral-100 mx-4" />
-          <div className="px-4 py-3.5 flex items-center justify-between">
-            <span className="text-[15px] font-medium text-neutral-900">
+          <div className="h-px" style={{ backgroundColor: BORDER }} />
+          <div className="h-[53px] px-4 flex items-center justify-between">
+            <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
               Accent first beat
             </span>
             <button
               onClick={() => setAccentFirstBeat(!accentFirstBeat)}
-              className="w-12 h-7 rounded-full transition-colors relative flex-shrink-0"
+              className="w-9 h-5 rounded-full transition-colors relative flex-shrink-0 p-0.5 focus:outline-none"
               style={{
-                backgroundColor: accentFirstBeat ? ACCENT : '#D6CCC4'
+                backgroundColor: accentFirstBeat ? ACCENT : BORDER
               }}
               aria-pressed={accentFirstBeat}
               aria-label="Toggle accent first beat">
               
               <span
-                className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${accentFirstBeat ? 'left-[22px]' : 'left-0.5'}`} />
+                className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${accentFirstBeat ? 'left-[18px]' : 'left-0.5'}`} />
               
             </button>
           </div>
@@ -525,7 +566,7 @@ export function FeisMinimalScreen({
       </div>
 
       <div
-        className="absolute left-0 right-0 z-30 px-5 pt-6 pb-4 flex justify-center pointer-events-none"
+        className="absolute left-0 right-0 z-50 px-5 pt-6 pb-4 flex justify-center pointer-events-none"
         style={{
           bottom: actionBottomOffset,
           background: `linear-gradient(to bottom, rgba(251,243,238,0) 0%, ${BG} 45%, ${BG} 100%)`
@@ -534,23 +575,13 @@ export function FeisMinimalScreen({
         <button
           onClick={handlePracticeToggle}
           disabled={!hasSelection}
-          className={`h-14 px-12 rounded-full text-white font-bold text-[16px] flex items-center gap-2 shadow-lg transition-transform pointer-events-auto ${hasSelection ? 'active:scale-95' : 'opacity-0 pointer-events-none'}`}
+          className={`h-12 px-6 rounded-full text-white font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center shadow-[0_20px_24px_-4px_rgba(16,24,40,0.08),0_8px_8px_-4px_rgba(16,24,40,0.03)] transition-transform pointer-events-auto ${hasSelection ? 'active:scale-95' : 'opacity-60'}`}
           style={{
             backgroundColor: ACCENT
           }}
-          aria-label={isPracticePlaying ? 'Stop practice' : 'Start practice'}>
+          aria-label={isPracticePlaying ? 'Stop metronome' : 'Start metronome'}>
           
-          {isPracticePlaying ?
-          <>
-              <Pause size={18} fill="currentColor" />
-              Stop
-            </> :
-
-          <>
-              <Play size={18} fill="currentColor" className="ml-0.5" />
-              Start
-            </>
-          }
+          {isPracticePlaying ? 'Stop Metronome' : 'Start Metronome'}
         </button>
       </div>
 
@@ -581,9 +612,11 @@ export function FeisMinimalScreen({
       <AnimatePresence>
         {showTimeSigPicker &&
         <PickerSheet
-          title="Time Signature"
+          title="Time signature"
           onClose={() => setShowTimeSigPicker(false)}>
           
+          <div className="px-4 py-3">
+            <div className="rounded-xl overflow-hidden bg-white">
             {[
           {
             label: '2/4',
@@ -614,20 +647,57 @@ export function FeisMinimalScreen({
                   setBeatsPerMeasure(opt.beats);
                   setShowTimeSigPicker(false);
                 }}
-                className="w-full min-h-[48px] px-4 py-3.5 flex items-center justify-between active:bg-neutral-50">
+                className="w-full h-[53px] px-4 flex items-center gap-4 text-left border-b last:border-b-0 active:bg-neutral-50 focus:outline-none"
+                style={{
+                  borderColor: BORDER
+                }}>
                 
-                  <span className="text-[15px] font-medium text-neutral-900">
-                    {opt.label}
-                  </span>
-                  {isActive &&
-                <Check size={18} style={{ color: ACCENT }} />
-                }
-                </button>);
+                <Radio checked={isActive} />
+                <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
+                  {opt.label}
+                </span>
+              </button>);
 
           })}
+            </div>
+          </div>
           </PickerSheet>
         }
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showStemPicker && selectedTrack &&
+        <PickerSheet
+          title="Track stems"
+          onClose={() => setShowStemPicker(false)}
+          closeIcon>
+          
+          <div className="px-4 py-3">
+            <div className="rounded-xl overflow-hidden bg-white">
+          {selectedTrack.stems.map((stem) => {
+            const isChecked = selectedStems.includes(stem);
+            return (
+              <button
+                key={stem}
+                onClick={() => handleStemToggle(stem)}
+                className="w-full h-[53px] px-4 flex items-center gap-4 text-left border-b last:border-b-0 active:bg-neutral-50 focus:outline-none"
+                style={{
+                  borderColor: BORDER
+                }}>
+                
+                <Checkbox checked={isChecked} />
+                <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
+                  {stem}
+                </span>
+              </button>);
+
+          })}
+            </div>
+          </div>
+        </PickerSheet>
+        }
+      </AnimatePresence>
+
     </div>);
 
 }
@@ -697,33 +767,35 @@ function SelectedTrackCard({
 function PracticeSelectionCard({
   preset,
   track,
-  selectedStyleName,
+  progress,
+  currentTime,
   onOpen
 }: {
   preset: PracticePreset | null | undefined;
   track: DownloadedTrack | null | undefined;
-  selectedStyleName?: string;
+  progress: number;
+  currentTime: number;
   onOpen: () => void;
 }) {
   if (!preset && !track) {
     return (
       <button
         onClick={onOpen}
-        className="w-full rounded-2xl px-5 py-7 mb-8 border border-dashed text-center active:scale-[0.99] transition-transform"
+        className="w-full rounded-xl px-4 py-8 border-2 border-dashed text-center active:scale-[0.99] transition-transform"
         style={{
-          borderColor: `${ACCENT}80`,
-          backgroundColor: 'rgba(255,255,255,0.24)'
+          borderColor: '#A3A3A3',
+          backgroundColor: 'transparent'
         }}
         aria-label="Select preset or downloaded track">
         
-        <div className="text-[20px] font-bold text-neutral-900 mb-2">
-          Select preset or track
+        <div className="text-[16px] font-semibold leading-5 tracking-[-0.27px] mb-1" style={{ color: '#1C170D' }}>
+          Select presets or tracks
         </div>
-        <div className="text-[15px] leading-5 text-neutral-500 max-w-[280px] mx-auto mb-5">
-          Add a preset or downloaded track you want to practise with.
+        <div className="text-[12px] font-medium leading-[18px] max-w-[260px] mx-auto mb-4" style={{ color: TEXT_SECONDARY }}>
+          Add presets or downloaded track you want to practise with.
         </div>
         <span
-          className="inline-flex h-9 min-w-[90px] items-center justify-center rounded-full px-5 text-[15px] font-bold text-white shadow-sm"
+          className="inline-flex h-7 min-w-[77px] items-center justify-center rounded-full px-4 text-[14px] font-semibold leading-5 tracking-[-0.4px] text-white"
           style={{
             backgroundColor: ACCENT
           }}>
@@ -736,27 +808,21 @@ function PracticeSelectionCard({
 
   if (preset) {
     return (
-      <div className="mb-5">
-        <div className="text-[13px] text-neutral-500 mb-1 px-1">
-          Active practice
-        </div>
+      <div>
         <button
           onClick={onOpen}
-          className="w-full rounded-2xl bg-white px-4 py-4 shadow-sm border text-left flex items-center gap-3 active:bg-neutral-50 transition-colors"
-          style={{
-            borderColor: `${ACCENT}55`
-          }}
+          className="w-full h-[73px] rounded-xl bg-white px-4 text-left flex items-center gap-4 active:bg-neutral-50 transition-colors"
           aria-label="Change preset selection">
           
           <div className="flex-1 min-w-0">
-            <div className="text-[17px] font-bold text-neutral-900 truncate">
+            <div className="text-[14px] font-medium leading-[21px] truncate" style={{ color: TEXT_PRIMARY }}>
               {preset.name}
             </div>
-            <div className="text-[13px] text-neutral-500 truncate mt-0.5">
-              {preset.timeSignature} · {formatRange(preset.bpmRange)} · Preset
+            <div className="text-[12px] leading-[18px] truncate mt-0.5" style={{ color: TEXT_SECONDARY }}>
+              {preset.timeSignature} · {formatRange(preset.bpmRange)}
             </div>
           </div>
-          <ChevronRight size={18} style={{ color: ACCENT }} />
+          <ChevronRight size={16} style={{ color: ACCENT }} />
         </button>
       </div>);
 
@@ -766,32 +832,39 @@ function PracticeSelectionCard({
   if (!selectedTrack) return null;
 
   return (
-    <div className="mb-5">
-      <div className="text-[13px] text-neutral-500 mb-1 px-1">
-        Selected track
-      </div>
+    <div>
       <button
         onClick={onOpen}
-        className="w-full rounded-2xl bg-white px-4 py-3 shadow-sm border text-left flex items-center gap-3 active:bg-neutral-50 transition-colors"
-        style={{
-          borderColor: `${ACCENT}55`
-        }}
+          className="w-full h-[72px] rounded-xl bg-white px-3 py-2 text-left flex items-center gap-4 active:bg-neutral-50 transition-colors focus:outline-none"
         aria-label="Change downloaded track selection">
         
-        <Artwork color={selectedTrack.artworkColor} />
+        <Artwork color={selectedTrack.artworkColor} size="lg" />
         <div className="flex-1 min-w-0">
-          <div className="text-[15px] font-bold text-neutral-900 truncate">
+          <div className="text-[14px] font-medium leading-[21px] truncate" style={{ color: TEXT_PRIMARY }}>
             {selectedTrack.title}
           </div>
-          <div className="text-[13px] text-neutral-500 truncate">
+          <div className="text-[12px] leading-[18px] truncate" style={{ color: TEXT_SECONDARY }}>
             {selectedTrack.artist}
           </div>
-          <div className="text-[12px] text-neutral-400 truncate mt-0.5">
-            {selectedTrack.stem} · {selectedTrack.bpm} BPM{selectedStyleName ? ` · ${selectedStyleName}` : ''}
-          </div>
         </div>
-        <ChevronRight size={18} style={{ color: ACCENT }} />
+        <ChevronRight size={16} style={{ color: ACCENT }} />
       </button>
+      <div className="mt-[7px] flex items-center gap-[3px]">
+        <span className="w-[23px] text-right text-[8px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
+            {formatTime(currentTime)}
+        </span>
+        <div className="h-[5px] flex-1 rounded-r overflow-hidden" style={{ backgroundColor: '#F8E1DB' }}>
+          <div
+            className="h-full rounded transition-all duration-100 ease-linear"
+            style={{
+              width: `${Math.max(2, Math.min(Math.max(progress, 0), 1) * 100)}%`,
+              backgroundColor: ACCENT
+            }} />
+        </div>
+        <span className="w-[23px] text-right text-[8px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
+          {formatTime(selectedTrack.duration)}
+        </span>
+      </div>
     </div>);
 
 }
@@ -982,7 +1055,10 @@ function PickerSheet({
           opacity: 0
         }}
         onClick={onClose}
-        className="absolute inset-0 bg-black/30 z-[60]" />
+        className="absolute inset-0 z-[60]"
+        style={{
+          backgroundColor: 'rgba(0,0,0,0.2)'
+        }} />
       
       <motion.div
         initial={{
@@ -999,13 +1075,17 @@ function PickerSheet({
           damping: 28,
           stiffness: 260
         }}
-        className="absolute bottom-0 left-0 right-0 rounded-t-3xl z-[70] pb-10"
+        className="absolute bottom-0 left-0 right-0 rounded-t-[10px] z-[70] pb-3 overflow-hidden"
         style={{
           backgroundColor: BG
         }}>
         
-        <div className="w-10 h-1 bg-neutral-300 rounded-full mx-auto mt-3 mb-2" />
-        <div className="px-4 py-2 flex items-center justify-between border-b border-neutral-100">
+        <div className="w-9 h-[5px] bg-[rgba(60,60,67,0.3)] rounded-full mx-auto mt-[10px]" />
+        <div
+          className="h-[47px] px-4 flex items-end justify-between pb-3 border-b"
+          style={{
+            borderColor: 'rgba(60,60,67,0.36)'
+          }}>
           <div className="flex items-center gap-2 min-w-0">
             {onBack &&
             <button
@@ -1017,20 +1097,20 @@ function PickerSheet({
               </button>
             }
             <div className="min-w-0">
-              <h3 className="text-[15px] font-semibold text-neutral-900 truncate">
+              <h3 className="text-[16px] font-semibold leading-5 tracking-[-0.27px] truncate" style={{ color: TEXT_PRIMARY }}>
                 {title}
               </h3>
               {subtitle &&
-              <div className="text-[12px] text-neutral-500">{subtitle}</div>
+              <div className="text-[12px] leading-[18px]" style={{ color: TEXT_SECONDARY }}>{subtitle}</div>
               }
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 active:bg-white"
+            className="w-[30px] h-[30px] -mb-1 rounded-full flex items-center justify-center bg-black/5 text-[rgba(60,60,67,0.6)] active:bg-black/10"
             aria-label="Close selection">
             
-            {closeIcon ? <X size={17} /> : <span className="text-[15px] font-semibold" style={{ color: ACCENT }}>Done</span>}
+            {closeIcon ? <X size={17} /> : <span className="text-[14px] font-semibold" style={{ color: ACCENT }}>Done</span>}
           </button>
         </div>
         <div className="max-h-[68vh] overflow-y-auto">{children}</div>
@@ -1042,9 +1122,9 @@ function PickerSheet({
 function Radio({ checked }: {checked: boolean;}) {
   return (
     <span
-      className="w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0"
+      className="w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 bg-white"
       style={{
-        borderColor: checked ? ACCENT : '#E7DDD8'
+        borderColor: checked ? ACCENT : BORDER
       }}>
       
       {checked &&
@@ -1058,10 +1138,23 @@ function Radio({ checked }: {checked: boolean;}) {
 
 }
 
-function Artwork({ color }: {color: string;}) {
+function Checkbox({ checked }: {checked: boolean;}) {
+  return (
+    <span
+      className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 bg-white border"
+      style={{
+        borderColor: checked ? ACCENT : BORDER
+      }}>
+      
+      {checked && <Check size={12} strokeWidth={2.5} style={{ color: ACCENT }} />}
+    </span>);
+
+}
+
+function Artwork({ color, size = 'md' }: {color: string; size?: 'md' | 'lg';}) {
   return (
     <div
-      className="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0 overflow-hidden"
+      className={`${size === 'lg' ? 'w-14 h-14 rounded-lg' : 'w-12 h-12 rounded-xl'} flex items-center justify-center text-white flex-shrink-0 overflow-hidden`}
       style={{
         backgroundColor: color
       }}>

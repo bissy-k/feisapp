@@ -1,6 +1,5 @@
 import React from 'react';
-import { Home, Search, PlaySquare, Library, Compass } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Home, Search, PlaySquare, Music2, MoreHorizontal } from 'lucide-react';
 export type Tab = 'home' | 'browse' | 'practice' | 'library';
 interface BottomTabsProps {
   activeTab: Tab;
@@ -15,52 +14,46 @@ export function BottomTabs({ activeTab, onChange }: BottomTabsProps) {
   },
   {
     id: 'browse',
-    label: 'Browse',
-    icon: Compass
-  },
-  {
-    id: 'practice',
-    label: 'Practice',
-    icon: PlaySquare
+    label: 'Search',
+    icon: Search
   },
   {
     id: 'library',
-    label: 'Library',
-    icon: Library
-  }] as
-  const;
+    label: 'My Music',
+    icon: Music2
+  },
+  {
+    id: 'practice',
+    label: 'Metronome',
+    icon: PlaySquare
+  },
+  {
+    id: null,
+    label: 'More',
+    icon: MoreHorizontal
+  }] as const;
   return (
-    <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-neutral-200 pb-8 pt-2 px-4 z-40">
-      <div className="flex justify-between items-center max-w-md mx-auto">
+    <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-[rgba(60,60,67,0.36)] pb-8 pt-2 z-40">
+      <div className="flex justify-between items-start mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+          const isActive = tab.id !== null && activeTab === tab.id;
           return (
             <button
-              key={tab.id}
-              onClick={() => onChange(tab.id)}
-              className="flex flex-col items-center justify-center w-16 gap-1 relative">
+              key={tab.label}
+              onClick={() => {
+                if (tab.id) onChange(tab.id);
+              }}
+              className="flex flex-col items-center justify-center flex-1 gap-1 relative pt-0">
               
               <div className="relative">
                 <Icon
-                  size={24}
-                  className={`transition-colors duration-200 ${isActive ? 'text-[#14b8a6]' : 'text-neutral-400'}`}
-                  strokeWidth={isActive ? 2.5 : 2} />
-                
-                {isActive &&
-                <motion.div
-                  layoutId="activeTabIndicator"
-                  className="absolute -inset-2 bg-[#14b8a6]/10 rounded-xl -z-10"
-                  transition={{
-                    type: 'spring',
-                    stiffness: 300,
-                    damping: 30
-                  }} />
-
-                }
+                  size={20}
+                  className={`transition-colors duration-200 ${isActive ? 'text-[#E56D56]' : 'text-[#666666]'}`}
+                  strokeWidth={isActive ? 2.2 : 2} />
               </div>
               <span
-                className={`text-[10px] font-medium transition-colors duration-200 ${isActive ? 'text-[#14b8a6]' : 'text-neutral-500'}`}>
+                className={`text-[10px] font-semibold tracking-[-0.24px] transition-colors duration-200 ${isActive ? 'text-[#E56D56]' : 'text-[#666666]'}`}>
                 
                 {tab.label}
               </span>

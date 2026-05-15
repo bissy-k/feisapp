@@ -19,6 +19,7 @@ type PlayerState = {
 type PlayerContextType = PlayerState & {
   playTrack: (track: Track) => void;
   togglePlayPause: () => void;
+  stopTrack: () => void;
   seek: (progress: number) => void;
   skipForward: () => void;
   skipBackward: () => void;
@@ -85,6 +86,15 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       isPlaying: !prev.isPlaying
     }));
   };
+  const stopTrack = () => {
+    setState((prev) => ({
+      ...prev,
+      currentTrack: null,
+      isPlaying: false,
+      progress: 0,
+      currentTime: 0
+    }));
+  };
   const seek = (progress: number) => {
     setState((prev) => ({
       ...prev,
@@ -143,6 +153,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
         ...state,
         playTrack,
         togglePlayPause,
+        stopTrack,
         seek,
         skipForward,
         skipBackward,
