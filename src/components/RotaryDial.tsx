@@ -33,6 +33,7 @@ export function RotaryDial({
   const containerRef = useRef<HTMLDivElement>(null);
   const lastAngleRef = useRef<number | null>(null);
   const accumulatedRef = useRef(0);
+  const lastHapticAtRef = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
   const range = max - min;
   // Map current value to a 270° arc starting at -135° (bottom-left) sweeping to +135° (bottom-right)
@@ -44,11 +45,20 @@ export function RotaryDial({
     const cy = rect.top + rect.height / 2;
     return Math.atan2(clientY - cy, clientX - cx) * 180 / Math.PI;
   }, []);
+  const triggerHaptic = useCallback((duration = 8) => {
+    const now = window.performance.now();
+    if (now - lastHapticAtRef.current < 45) return;
+    lastHapticAtRef.current = now;
+    if ('vibrate' in navigator) {
+      navigator.vibrate(duration);
+    }
+  }, []);
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     setIsDragging(true);
     lastAngleRef.current = getAngle(e.clientX, e.clientY);
     accumulatedRef.current = 0;
+    triggerHaptic(10);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -65,7 +75,10 @@ export function RotaryDial({
     if (Math.abs(accumulatedRef.current) >= step) {
       const change = Math.trunc(accumulatedRef.current / step) * step;
       const next = Math.max(min, Math.min(max, value + change));
-      if (next !== value) onChange(next);
+      if (next !== value) {
+        onChange(next);
+        triggerHaptic();
+      }
       accumulatedRef.current -= change;
     }
   };
@@ -110,8 +123,10 @@ export function RotaryDial({
       onKeyDown={(e) => {
         if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
           onChange(Math.min(max, value + step));
+          triggerHaptic();
         } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
           onChange(Math.max(min, value - step));
+          triggerHaptic();
         }
       }}>
       
