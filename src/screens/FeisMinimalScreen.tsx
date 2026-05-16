@@ -575,9 +575,9 @@ export function FeisMinimalScreen({
         <button
           onClick={handlePracticeToggle}
           disabled={!hasSelection}
-          className={`h-12 px-6 rounded-full text-white font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center shadow-[0_20px_24px_-4px_rgba(16,24,40,0.08),0_8px_8px_-4px_rgba(16,24,40,0.03)] transition-transform pointer-events-auto ${hasSelection ? 'active:scale-95' : 'opacity-60'}`}
+          className={`h-12 px-6 rounded-full font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center shadow-[0_20px_24px_-4px_rgba(16,24,40,0.08),0_8px_8px_-4px_rgba(16,24,40,0.03)] transition-transform pointer-events-auto ${hasSelection ? 'text-white active:scale-95' : 'text-white cursor-not-allowed'}`}
           style={{
-            backgroundColor: ACCENT
+            backgroundColor: hasSelection ? ACCENT : '#D0D5DD'
           }}
           aria-label={isPracticePlaying ? 'Stop metronome' : 'Start metronome'}>
           
