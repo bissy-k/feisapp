@@ -46,12 +46,11 @@ export function RotaryDial({
     return Math.atan2(clientY - cy, clientX - cx) * 180 / Math.PI;
   }, []);
   const triggerHaptic = useCallback((duration = 8) => {
+    if (typeof window.navigator?.vibrate !== 'function') return;
     const now = window.performance.now();
     if (now - lastHapticAtRef.current < 45) return;
     lastHapticAtRef.current = now;
-    if ('vibrate' in navigator) {
-      navigator.vibrate(duration);
-    }
+    window.navigator.vibrate(duration);
   }, []);
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
