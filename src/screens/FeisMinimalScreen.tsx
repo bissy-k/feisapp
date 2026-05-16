@@ -47,6 +47,7 @@ type PracticeSelection =
   | { type: 'track'; trackId: string };
 
 type SelectionView = 'root' | 'playlists' | 'tracks';
+type SessionState = 'ready' | 'running' | 'paused';
 
 const ACCENT = '#E56D56';
 const BG = '#FBF6F3';
@@ -267,6 +268,7 @@ export function FeisMinimalScreen({
     null
   );
   const [selectedStems, setSelectedStems] = useState<string[]>(['Drums']);
+  const [sessionState, setSessionState] = useState<SessionState>('ready');
 
   const selectedPreset =
   selection?.type === 'preset' ?
@@ -303,13 +305,20 @@ export function FeisMinimalScreen({
   beatsPerMeasure === 9 ?
   '9/8' :
   '4/4';
-  const isPracticePlaying = hasSelection ? isPlaying || isTrackPlaying : false;
+  const isPracticePlaying = hasSelection && sessionState === 'running';
+  const primaryActionLabel =
+  sessionState === 'running' ?
+  'Pause' :
+  sessionState === 'paused' ?
+  'Resume' :
+  'Start';
   const isSelectedTrackLoaded = currentTrack?.id === selectedTrack?.id;
   const selectedTrackProgress = isSelectedTrackLoaded ? progress : 0;
   const selectedTrackTime = isSelectedTrackLoaded ? currentTime : 0;
   const selectedStemLabel =
   selectedStems.length > 1 ? selectedStems.join(', ') : selectedStems[0] ?? 'Drums';
   const isCustomTempo = hasSelection && defaultBpm > 0 && bpm !== defaultBpm;
+  const settingsTopClass = selectedTrack ? 'mt-6' : hasSelection ? 'mt-9' : 'mt-4';
 
   useEffect(() => {
     if (!selection) {
@@ -361,31 +370,71 @@ export function FeisMinimalScreen({
     if (defaultBpm > 0) setBpm(defaultBpm);
   };
 
-  const handlePracticeToggle = () => {
+  const handleStartSession = () => {
     if (!hasSelection) return;
-
-    if (isPracticePlaying) {
-      if (isTrackPlaying || currentTrack) stopTrack();
-      if (isPlaying) stop();
-      return;
-    }
 
     if (selectedTrack) {
       if (currentTrack?.id === selectedTrack.id) {
-        togglePlayPause();
+        if (!isTrackPlaying) togglePlayPause();
       } else {
         playTrack(selectedTrack);
       }
     }
 
     if (!isPlaying) togglePlay();
+    setSessionState('running');
+  };
+
+  const handlePauseSession = () => {
+    if (isPlaying) togglePlay();
+    if (selectedTrack && currentTrack?.id === selectedTrack.id && isTrackPlaying) {
+      togglePlayPause();
+    }
+    setSessionState('paused');
+  };
+
+  const handleResumeSession = () => {
+    if (!hasSelection) return;
+
+    if (selectedTrack) {
+      if (currentTrack?.id === selectedTrack.id) {
+        if (!isTrackPlaying) togglePlayPause();
+      } else {
+        playTrack(selectedTrack);
+      }
+    }
+
+    if (!isPlaying) togglePlay();
+    setSessionState('running');
+  };
+
+  const handlePrimaryAction = () => {
+    if (sessionState === 'running') {
+      handlePauseSession();
+      return;
+    }
+    if (sessionState === 'paused') {
+      handleResumeSession();
+      return;
+    }
+    handleStartSession();
+  };
+
+  const handleCancelSession = () => {
+    if (isPlaying) stop();
+    if (currentTrack) stopTrack();
+    setSelection(null);
+    setSelectedStems(['Drums']);
+    setSessionState('ready');
   };
 
   const handlePresetSelect = (preset: PracticePreset) => {
+    handleCancelSession();
     setSelection({
       type: 'preset',
       presetId: preset.id
     });
+    setSessionState('ready');
     setShowSelectionSheet(false);
   };
 
@@ -400,10 +449,12 @@ export function FeisMinimalScreen({
   };
 
   const handleTrackSelect = (track: DownloadedTrack) => {
+    handleCancelSession();
     setSelection({
       type: 'track',
       trackId: track.id
     });
+    setSessionState('ready');
     setShowSelectionSheet(false);
   };
 
@@ -451,6 +502,7 @@ export function FeisMinimalScreen({
           track={selectedTrack}
           progress={selectedTrackProgress}
           currentTime={selectedTrackTime}
+          sessionState={sessionState}
           onOpen={() => setShowSelectionSheet(true)} />
 
         <div
@@ -500,7 +552,7 @@ export function FeisMinimalScreen({
         </div>
 
         <div
-          className={`${selectedTrack ? 'mt-6' : 'mt-9'} rounded-xl overflow-hidden shadow-sm`}
+          className={`${settingsTopClass} rounded-xl overflow-hidden shadow-sm`}
           style={{
           backgroundColor: CARD_BG
           }}>
@@ -525,8 +577,14 @@ export function FeisMinimalScreen({
           }
 
           <button
-            onClick={() => setShowTimeSigPicker(true)}
-            className="w-full h-[53px] px-4 flex items-center justify-between active:bg-neutral-50 focus:outline-none"
+            onClick={() => {
+              if (hasSelection) setShowTimeSigPicker(true);
+            }}
+            disabled={!hasSelection}
+            className={`w-full h-[53px] px-4 flex items-center justify-between focus:outline-none ${hasSelection ? 'active:bg-neutral-50' : 'cursor-not-allowed'}`}
+            style={{
+              opacity: hasSelection ? 1 : 0.45
+            }}
             aria-label="Change time signature">
             
             <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
@@ -539,17 +597,24 @@ export function FeisMinimalScreen({
               }}>
               
               {timeSignatureLabel}
-              <ChevronRight size={16} style={{ color: ACCENT }} />
+              <ChevronRight size={16} style={{ color: hasSelection ? ACCENT : TEXT_TERTIARY }} />
             </span>
           </button>
           <div className="h-px" style={{ backgroundColor: BORDER }} />
-          <div className="h-[53px] px-4 flex items-center justify-between">
+          <div
+            className="h-[53px] px-4 flex items-center justify-between"
+            style={{
+              opacity: hasSelection ? 1 : 0.45
+            }}>
             <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
               Accent first beat
             </span>
             <button
-              onClick={() => setAccentFirstBeat(!accentFirstBeat)}
-              className="w-9 h-5 rounded-full transition-colors relative flex-shrink-0 p-0.5 focus:outline-none"
+              onClick={() => {
+                if (hasSelection) setAccentFirstBeat(!accentFirstBeat);
+              }}
+              disabled={!hasSelection}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 p-0.5 focus:outline-none ${hasSelection ? '' : 'cursor-not-allowed'}`}
               style={{
                 backgroundColor: accentFirstBeat ? ACCENT : BORDER
               }}
@@ -566,22 +631,36 @@ export function FeisMinimalScreen({
       </div>
 
       <div
-        className="absolute left-0 right-0 z-50 px-5 pt-6 pb-4 flex justify-center pointer-events-none"
+        className={`absolute left-0 right-0 z-50 px-5 py-4 flex justify-center pointer-events-none ${hasSelection ? 'gap-2' : ''}`}
         style={{
           bottom: actionBottomOffset,
-          background: `linear-gradient(to bottom, rgba(251,243,238,0) 0%, ${BG} 45%, ${BG} 100%)`
+          backgroundColor: CARD_BG,
+          borderTop: `1.5px solid ${BORDER}`
         }}>
-        
+        {hasSelection &&
         <button
-          onClick={handlePracticeToggle}
-          disabled={!hasSelection}
-          className={`h-12 px-6 rounded-full font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center shadow-[0_20px_24px_-4px_rgba(16,24,40,0.08),0_8px_8px_-4px_rgba(16,24,40,0.03)] transition-transform pointer-events-auto ${hasSelection ? 'text-white active:scale-95' : 'text-white cursor-not-allowed'}`}
+          onClick={handleCancelSession}
+          className="h-12 px-6 rounded-full font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center transition-transform pointer-events-auto active:scale-95"
           style={{
-            backgroundColor: hasSelection ? ACCENT : '#D0D5DD'
+            backgroundColor: 'rgba(229,109,86,0.15)',
+            color: ACCENT
           }}
-          aria-label={isPracticePlaying ? 'Stop metronome' : 'Start metronome'}>
+          aria-label="Cancel metronome session">
           
-          {isPracticePlaying ? 'Stop Metronome' : 'Start Metronome'}
+          Cancel
+        </button>
+        }
+        <button
+          onClick={handlePrimaryAction}
+          disabled={!hasSelection}
+          className={`h-12 px-6 rounded-full font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center transition-transform pointer-events-auto ${hasSelection ? 'text-white active:scale-95' : 'cursor-not-allowed'}`}
+          style={{
+            backgroundColor: hasSelection ? ACCENT : '#F2F4F7',
+            color: hasSelection ? '#FFFFFF' : '#A3A3A3'
+          }}
+          aria-label={`${primaryActionLabel.toLowerCase()} metronome session`}>
+          
+          {primaryActionLabel}
         </button>
       </div>
 
@@ -769,19 +848,21 @@ function PracticeSelectionCard({
   track,
   progress,
   currentTime,
+  sessionState,
   onOpen
 }: {
   preset: PracticePreset | null | undefined;
   track: DownloadedTrack | null | undefined;
   progress: number;
   currentTime: number;
+  sessionState: SessionState;
   onOpen: () => void;
 }) {
   if (!preset && !track) {
     return (
       <button
         onClick={onOpen}
-        className="w-full rounded-xl px-4 py-8 border-2 border-dashed text-center active:scale-[0.99] transition-transform"
+        className="w-full rounded-xl px-4 py-4 border-2 border-dashed text-center active:scale-[0.99] transition-transform"
         style={{
           borderColor: '#A3A3A3',
           backgroundColor: 'transparent'
@@ -838,7 +919,10 @@ function PracticeSelectionCard({
           className="w-full h-[72px] rounded-xl bg-white px-3 py-2 text-left flex items-center gap-4 active:bg-neutral-50 transition-colors focus:outline-none"
         aria-label="Change downloaded track selection">
         
-        <Artwork color={selectedTrack.artworkColor} size="lg" />
+        <Artwork
+          color={selectedTrack.artworkColor}
+          size="lg"
+          sessionState={sessionState} />
         <div className="flex-1 min-w-0">
           <div className="text-[14px] font-medium leading-[21px] truncate" style={{ color: TEXT_PRIMARY }}>
             {selectedTrack.title}
@@ -1151,10 +1235,21 @@ function Checkbox({ checked }: {checked: boolean;}) {
 
 }
 
-function Artwork({ color, size = 'md' }: {color: string; size?: 'md' | 'lg';}) {
+function Artwork({
+  color,
+  size = 'md',
+  sessionState
+}: {
+  color: string;
+  size?: 'md' | 'lg';
+  sessionState?: SessionState;
+}) {
+  const showPlaybackIndicator =
+  sessionState === 'running' || sessionState === 'paused';
+
   return (
     <div
-      className={`${size === 'lg' ? 'w-14 h-14 rounded-lg' : 'w-12 h-12 rounded-xl'} flex items-center justify-center text-white flex-shrink-0 overflow-hidden`}
+      className={`${size === 'lg' ? 'w-14 h-14 rounded-lg' : 'w-12 h-12 rounded-xl'} relative flex items-center justify-center text-white flex-shrink-0 overflow-hidden`}
       style={{
         backgroundColor: color
       }}>
@@ -1164,6 +1259,19 @@ function Artwork({ color, size = 'md' }: {color: string; size?: 'md' | 'lg';}) {
           <div className="w-2 h-2 rounded-full bg-neutral-900/70" />
         </div>
       </div>
+      {showPlaybackIndicator &&
+      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+          {sessionState === 'paused' ?
+        <div className="w-0 h-0 border-y-[7px] border-y-transparent border-l-[10px] border-l-white ml-0.5" /> :
+        <div className="flex items-end gap-1 h-4">
+              <span className="w-[3px] h-3 rounded-sm bg-white" />
+              <span className="w-[3px] h-2 rounded-sm bg-white" />
+              <span className="w-[3px] h-3.5 rounded-sm bg-white" />
+              <span className="w-[3px] h-2.5 rounded-sm bg-white" />
+            </div>
+        }
+        </div>
+      }
     </div>);
 
 }
