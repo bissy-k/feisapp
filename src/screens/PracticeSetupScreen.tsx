@@ -87,7 +87,7 @@ export function PracticeSetupScreen({
         damping: 25,
         stiffness: 200
       }}
-      className="absolute inset-0 z-50 bg-neutral-900 text-white flex flex-col overflow-y-auto">
+      className="absolute inset-0 z-50 bg-neutral-900 text-white flex flex-col overflow-y-auto scrollbar-none">
       
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-12 pb-4 sticky top-0 bg-neutral-900/90 backdrop-blur-md z-10">

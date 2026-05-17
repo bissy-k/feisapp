@@ -33,17 +33,24 @@ export function BottomTabs({ activeTab, onChange }: BottomTabsProps) {
     icon: MoreHorizontal
   }] as const;
   return (
-    <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-[rgba(60,60,67,0.36)] pb-8 pt-2 z-40">
+    <div
+      className="absolute bottom-0 left-0 right-0 bg-white border-t border-[rgba(60,60,67,0.36)] pt-2 z-40"
+      style={{
+        paddingBottom: 'max(env(safe-area-inset-bottom), 16px)'
+      }}>
       <div className="flex justify-between items-start mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = tab.id !== null && activeTab === tab.id;
+          const selectTab = () => {
+            if (tab.id) onChange(tab.id);
+          };
           return (
             <button
+              type="button"
               key={tab.label}
-              onClick={() => {
-                if (tab.id) onChange(tab.id);
-              }}
+              onPointerDown={selectTab}
+              onClick={selectTab}
               className="flex flex-col items-center justify-center flex-1 gap-1 relative pt-0">
               
               <div className="relative">

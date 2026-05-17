@@ -7,10 +7,40 @@
 
 /* END TAILWIND IMPORTS — ALL OTHER CSS MUST GO BELOW THIS LINE */
 
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  overscroll-behavior: none;
+}
+
 .scrollbar-none {
   scrollbar-width: none;
 }
 
 .scrollbar-none::-webkit-scrollbar {
   display: none;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.phone-shell {
+  height: 100dvh;
+}
+
+@media (min-width: 500px) {
+  .phone-shell {
+    height: min(100dvh, 844px);
+  }
 }

@@ -459,7 +459,8 @@ export function FeisMinimalScreen({
   };
 
   const bottomOffset = embedded ? 88 : 0;
-  const actionBottomOffset = embedded ? 72 : 0;
+  const actionBottomOffset = embedded ? 64 : 0;
+  const scrollBottomPadding = bottomOffset + (hasSelection ? 118 : 24);
 
   return (
     <div
@@ -494,7 +495,7 @@ export function FeisMinimalScreen({
       <div
         className="flex-1 overflow-y-auto scrollbar-none px-4"
         style={{
-          paddingBottom: bottomOffset + 118
+          paddingBottom: scrollBottomPadding
         }}>
         
         <PracticeSelectionCard
@@ -630,17 +631,15 @@ export function FeisMinimalScreen({
 
       </div>
 
+      {hasSelection &&
       <div
-        className={`absolute left-0 right-0 z-50 px-5 py-4 flex justify-center pointer-events-none ${hasSelection ? 'gap-2' : ''}`}
+        className="absolute left-0 right-0 z-50 flex justify-center gap-2 overflow-hidden rounded-t-lg bg-white p-4 pointer-events-none"
         style={{
-          bottom: actionBottomOffset,
-          backgroundColor: CARD_BG,
-          borderTop: `1.5px solid ${BORDER}`
+          bottom: actionBottomOffset
         }}>
-        {hasSelection &&
         <button
           onClick={handleCancelSession}
-          className="h-12 px-6 rounded-full font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center transition-transform pointer-events-auto active:scale-95"
+          className="h-12 flex-1 rounded-full px-4 font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center transition-transform pointer-events-auto active:scale-95 focus:outline-none"
           style={{
             backgroundColor: 'rgba(229,109,86,0.15)',
             color: ACCENT
@@ -649,20 +648,18 @@ export function FeisMinimalScreen({
           
           Cancel
         </button>
-        }
         <button
           onClick={handlePrimaryAction}
-          disabled={!hasSelection}
-          className={`h-12 px-6 rounded-full font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center transition-transform pointer-events-auto ${hasSelection ? 'text-white active:scale-95' : 'cursor-not-allowed'}`}
+          className="h-12 flex-1 rounded-full px-4 font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center text-white transition-transform pointer-events-auto active:scale-95 focus:outline-none"
           style={{
-            backgroundColor: hasSelection ? ACCENT : '#F2F4F7',
-            color: hasSelection ? '#FFFFFF' : '#A3A3A3'
+            backgroundColor: ACCENT
           }}
           aria-label={`${primaryActionLabel.toLowerCase()} metronome session`}>
           
           {primaryActionLabel}
         </button>
       </div>
+      }
 
       <AnimatePresence>
         {showSelectionSheet &&
@@ -1197,7 +1194,7 @@ function PickerSheet({
             {closeIcon ? <X size={17} /> : <span className="text-[14px] font-semibold" style={{ color: ACCENT }}>Done</span>}
           </button>
         </div>
-        <div className="max-h-[68vh] overflow-y-auto">{children}</div>
+        <div className="max-h-[68vh] overflow-y-auto scrollbar-none">{children}</div>
       </motion.div>
     </>);
 

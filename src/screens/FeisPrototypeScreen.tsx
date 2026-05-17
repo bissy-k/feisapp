@@ -337,7 +337,7 @@ export function FeisPrototypeScreen({ onClose }: FeisPrototypeScreenProps) {
       </nav>
 
       {/* Content */}
-      <main className="flex-1 overflow-y-auto pb-8">
+      <main className="flex-1 overflow-y-auto scrollbar-none pb-8">
         {/* TRACK TAB */}
         {activeTab === 'track' &&
         <div className="px-4 pt-6 flex flex-col items-center">

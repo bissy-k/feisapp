@@ -46,11 +46,46 @@ export function RotaryDial({
     return Math.atan2(clientY - cy, clientX - cx) * 180 / Math.PI;
   }, []);
   const triggerHaptic = useCallback((duration = 8) => {
-    if (typeof window.navigator?.vibrate !== 'function') return;
     const now = window.performance.now();
     if (now - lastHapticAtRef.current < 45) return;
     lastHapticAtRef.current = now;
-    window.navigator.vibrate(duration);
+
+    window.dispatchEvent(
+      new CustomEvent('feis:haptic', {
+        detail: {
+          duration,
+          style: 'selection'
+        }
+      })
+    );
+
+    if (typeof window.navigator?.vibrate === 'function') {
+      window.navigator.vibrate(duration);
+      return;
+    }
+
+    const maybeNativeWindow = window as Window & {
+      webkit?: {
+        messageHandlers?: {
+          hapticFeedback?: {
+            postMessage: (payload: {duration: number; style: string;}) => void;
+          };
+        };
+      };
+      Telegram?: {
+        WebApp?: {
+          HapticFeedback?: {
+            selectionChanged?: () => void;
+          };
+        };
+      };
+    };
+
+    maybeNativeWindow.webkit?.messageHandlers?.hapticFeedback?.postMessage({
+      duration,
+      style: 'selection'
+    });
+    maybeNativeWindow.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
   }, []);
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();

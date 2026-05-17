@@ -61,7 +61,7 @@ export function SearchScreen({ onBack }: SearchScreenProps) {
       </div>
 
       {/* Results */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto scrollbar-none p-4">
         {query.length > 1 ?
         results.length > 0 ?
         <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm overflow-hidden">

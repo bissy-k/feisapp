@@ -6,7 +6,7 @@ interface BrowseScreenProps {
 }
 export function BrowseScreen({ onNavigateToStyle }: BrowseScreenProps) {
   return (
-    <div className="h-full overflow-y-auto pb-32 pt-14 px-4 bg-[#FAFAFA]">
+    <div className="h-full overflow-y-auto scrollbar-none pb-32 pt-14 px-4 bg-[#FAFAFA]">
       <h1 className="text-3xl font-bold tracking-tight text-neutral-900 mb-6">
         Browse
       </h1>

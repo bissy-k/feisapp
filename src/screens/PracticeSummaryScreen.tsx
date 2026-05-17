@@ -33,7 +33,7 @@ export function PracticeSummaryScreen({
         opacity: 1,
         scale: 1
       }}
-      className="absolute inset-0 z-50 bg-[#FAFAFA] text-neutral-900 flex flex-col overflow-y-auto">
+      className="absolute inset-0 z-50 bg-[#FAFAFA] text-neutral-900 flex flex-col overflow-y-auto scrollbar-none">
       
       <div className="flex-1 px-6 pt-16 pb-8 flex flex-col items-center">
         <motion.div

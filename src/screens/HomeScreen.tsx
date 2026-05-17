@@ -27,7 +27,7 @@ export function HomeScreen({
   ).filter(Boolean);
   const popularStyles = DANCE_STYLES.slice(0, 4);
   return (
-    <div className="h-full overflow-y-auto pb-32 pt-14 px-4 bg-[#FAFAFA]">
+    <div className="h-full overflow-y-auto scrollbar-none pb-32 pt-14 px-4 bg-[#FAFAFA]">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold tracking-tight text-neutral-900">
           Home

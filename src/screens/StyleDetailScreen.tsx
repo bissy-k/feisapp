@@ -13,7 +13,7 @@ export function StyleDetailScreen({ styleId, onBack }: StyleDetailScreenProps) {
   const { playTrack } = usePlayer();
   if (!style) return null;
   return (
-    <div className="h-full overflow-y-auto pb-32 bg-[#FAFAFA] flex flex-col">
+    <div className="h-full overflow-y-auto scrollbar-none pb-32 bg-[#FAFAFA] flex flex-col">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-[#FAFAFA]/90 backdrop-blur-md px-2 pt-12 pb-2 flex items-center">
         <button
