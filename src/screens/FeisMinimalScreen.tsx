@@ -495,6 +495,7 @@ export function FeisMinimalScreen({
       <div
         className="flex-1 overflow-y-auto scrollbar-none px-4"
         style={{
+          paddingTop: hasSelection ? 0 : 20,
           paddingBottom: scrollBottomPadding
         }}>
         
