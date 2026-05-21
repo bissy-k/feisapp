@@ -23,7 +23,6 @@ type PracticePreset = {
   id: string;
   name: string;
   bpm: number;
-  bpmRange: [number, number];
   timeSignature: string;
   accentFirstBeat: boolean;
 };
@@ -62,7 +61,6 @@ const PRACTICE_PRESETS: PracticePreset[] = [
     id: 'reel',
     name: 'Reel',
     bpm: 113,
-    bpmRange: [112, 116],
     timeSignature: '4/4',
     accentFirstBeat: false
   },
@@ -70,7 +68,6 @@ const PRACTICE_PRESETS: PracticePreset[] = [
     id: 'light-jig',
     name: 'Light Jig',
     bpm: 116,
-    bpmRange: [115, 116],
     timeSignature: '6/8',
     accentFirstBeat: false
   },
@@ -78,7 +75,6 @@ const PRACTICE_PRESETS: PracticePreset[] = [
     id: 'slip-jig',
     name: 'Slip Jig',
     bpm: 113,
-    bpmRange: [112, 114],
     timeSignature: '9/8',
     accentFirstBeat: false
   },
@@ -86,7 +82,6 @@ const PRACTICE_PRESETS: PracticePreset[] = [
     id: 'treble-jig',
     name: 'Treble Jig',
     bpm: 73,
-    bpmRange: [72, 74],
     timeSignature: '6/8',
     accentFirstBeat: false
   },
@@ -94,7 +89,6 @@ const PRACTICE_PRESETS: PracticePreset[] = [
     id: 'hornpipe',
     name: 'Hornpipe',
     bpm: 113,
-    bpmRange: [112, 114],
     timeSignature: '4/4',
     accentFirstBeat: false
   },
@@ -102,7 +96,6 @@ const PRACTICE_PRESETS: PracticePreset[] = [
     id: 'set-dance',
     name: 'Set Dance',
     bpm: 100,
-    bpmRange: [66, 110],
     timeSignature: 'Varies',
     accentFirstBeat: false
   },
@@ -110,7 +103,6 @@ const PRACTICE_PRESETS: PracticePreset[] = [
     id: 'traditional-set',
     name: 'Traditional Set',
     bpm: 110,
-    bpmRange: [90, 130],
     timeSignature: 'Varies',
     accentFirstBeat: false
   }
@@ -223,8 +215,13 @@ function signatureToBeats(signature: string) {
   return 4;
 }
 
-function formatRange(range: [number, number]) {
-  return `${range[0]}-${range[1]} BPM`;
+function defaultBeatsForSignature(signature: string | undefined) {
+  if (!signature || signature === 'Varies') return null;
+  return signatureToBeats(signature);
+}
+
+function formatBpm(value: number) {
+  return `${value} BPM`;
 }
 
 function formatTime(seconds: number) {
@@ -290,8 +287,7 @@ export function FeisMinimalScreen({
 
   const hasSelection = Boolean(selectedPreset || selectedTrack);
   const defaultBpm = selectedPreset?.bpm ?? selectedTrack?.bpm ?? 0;
-  const bpmRange =
-  selectedPreset?.bpmRange ?? selectedStyle?.bpmRange ?? ([40, 220] as [number, number]);
+  const bpmRange = selectedStyle?.bpmRange ?? ([40, 220] as [number, number]);
   const dialValue = hasSelection ? bpm : 40;
   const displayBpm = hasSelection ? bpm : 0;
   const speedPercent = hasSelection ? Math.round(bpm / defaultBpm * 100) : 100;
@@ -318,6 +314,9 @@ export function FeisMinimalScreen({
   const selectedStemLabel =
   selectedStems.length > 1 ? selectedStems.join(', ') : selectedStems[0] ?? 'Drums';
   const isCustomTempo = hasSelection && defaultBpm > 0 && bpm !== defaultBpm;
+  const defaultTimeSignatureBeats = defaultBeatsForSignature(
+    selectedPreset?.timeSignature ?? selectedStyle?.timeSignature
+  );
   const settingsTopClass = selectedTrack ? 'mt-6' : hasSelection ? 'mt-9' : 'mt-4';
 
   useEffect(() => {
@@ -717,6 +716,7 @@ export function FeisMinimalScreen({
           }].
           map((opt) => {
             const isActive = beatsPerMeasure === opt.beats;
+            const isDefault = defaultTimeSignatureBeats === opt.beats;
             return (
               <button
                 key={opt.label}
@@ -731,7 +731,7 @@ export function FeisMinimalScreen({
                 
                 <Radio checked={isActive} />
                 <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
-                  {opt.label}
+                  {opt.label}{isDefault ? ' (default)' : ''}
                 </span>
               </button>);
 
@@ -898,7 +898,7 @@ function PracticeSelectionCard({
               {preset.name}
             </div>
             <div className="text-[12px] leading-[18px] truncate mt-0.5" style={{ color: TEXT_SECONDARY }}>
-              {preset.timeSignature} · {formatRange(preset.bpmRange)}
+              {preset.timeSignature} · {formatBpm(preset.bpm)}
             </div>
           </div>
           <ChevronRight size={16} style={{ color: ACCENT }} />
@@ -1040,7 +1040,7 @@ function SelectionSheet({
                       {preset.name}
                     </div>
                     <div className="text-[12px] text-neutral-500">
-                      {preset.timeSignature} · {formatRange(preset.bpmRange)}
+                      {preset.timeSignature} · {formatBpm(preset.bpm)}
                     </div>
                   </div>
                 </button>);
