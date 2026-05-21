@@ -40,6 +40,100 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     favorites: ['t1', 't5'] // Mock initial favorites
   });
   const progressInterval = useRef<number | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sampleIntervalRef = useRef<number | null>(null);
+  const sampleBeatRef = useRef(0);
+
+  const getAudioContext = () => {
+    if (!audioContextRef.current) {
+      const AudioContextConstructor = window.AudioContext ||
+      (window as Window & {webkitAudioContext?: typeof AudioContext;}).webkitAudioContext;
+      if (!AudioContextConstructor) return null;
+      audioContextRef.current = new AudioContextConstructor();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      void audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  };
+
+  const playPulse = (
+    context: AudioContext,
+    frequency: number,
+    startTime: number,
+    duration: number,
+    gainValue: number,
+    type: OscillatorType = 'sine'
+  ) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, startTime);
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(gainValue, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration + 0.02);
+  };
+
+  const playNoise = (context: AudioContext, startTime: number, duration: number, gainValue: number) => {
+    const buffer = context.createBuffer(1, context.sampleRate * duration, context.sampleRate);
+    const channel = buffer.getChannelData(0);
+    for (let index = 0; index < channel.length; index += 1) {
+      channel[index] = (Math.random() * 2 - 1) * Math.pow(1 - index / channel.length, 2);
+    }
+    const source = context.createBufferSource();
+    const gain = context.createGain();
+    source.buffer = buffer;
+    gain.gain.setValueAtTime(gainValue, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    source.connect(gain);
+    gain.connect(context.destination);
+    source.start(startTime);
+  };
+
+  const scheduleSampleBeat = (track: Track) => {
+    const context = getAudioContext();
+    if (!context) return;
+    const beat = sampleBeatRef.current;
+    const startTime = context.currentTime + 0.015;
+    const beatDuration = 60 / track.bpm;
+    const root = 146.83;
+    const fifth = 220;
+
+    if (beat % 4 === 0) {
+      playPulse(context, 72, startTime, 0.18, 0.18, 'sine');
+      playPulse(context, root, startTime, beatDuration * 0.8, 0.045, 'triangle');
+    } else if (beat % 4 === 2) {
+      playPulse(context, 96, startTime, 0.12, 0.12, 'sine');
+      playNoise(context, startTime, 0.12, 0.035);
+      playPulse(context, fifth, startTime, beatDuration * 0.6, 0.035, 'triangle');
+    } else {
+      playPulse(context, 880, startTime, 0.045, 0.025, 'square');
+    }
+
+    playPulse(context, 1320, startTime + beatDuration / 2, 0.035, 0.018, 'square');
+    sampleBeatRef.current = beat + 1;
+  };
+
+  const stopSamplePlayback = () => {
+    if (sampleIntervalRef.current) {
+      clearInterval(sampleIntervalRef.current);
+      sampleIntervalRef.current = null;
+    }
+  };
+
+  const startSamplePlayback = (track: Track, resetBeat = false) => {
+    stopSamplePlayback();
+    if (resetBeat) sampleBeatRef.current = 0;
+    scheduleSampleBeat(track);
+    sampleIntervalRef.current = window.setInterval(() => {
+      scheduleSampleBeat(track);
+    }, 60 / track.bpm * 1000);
+  };
+
   useEffect(() => {
     if (state.isPlaying && state.currentTrack) {
       progressInterval.current = window.setInterval(() => {
@@ -50,6 +144,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
           if (prev.isLooping && newProgress >= prev.loopEnd) {
             newProgress = prev.loopStart;
           } else if (newProgress >= 1) {
+            stopSamplePlayback();
             return {
               ...prev,
               isPlaying: false,
@@ -71,7 +166,16 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       if (progressInterval.current) clearInterval(progressInterval.current);
     };
   }, [state.isPlaying, state.currentTrack, state.isLooping]);
+
+  useEffect(() => {
+    return () => {
+      stopSamplePlayback();
+      void audioContextRef.current?.close();
+    };
+  }, []);
+
   const playTrack = (track: Track) => {
+    startSamplePlayback(track, true);
     setState((prev) => ({
       ...prev,
       currentTrack: track,
@@ -81,12 +185,23 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     }));
   };
   const togglePlayPause = () => {
-    setState((prev) => ({
-      ...prev,
-      isPlaying: !prev.isPlaying
-    }));
+    setState((prev) => {
+      const nextIsPlaying = !prev.isPlaying;
+      if (prev.currentTrack) {
+        if (nextIsPlaying) {
+          startSamplePlayback(prev.currentTrack);
+        } else {
+          stopSamplePlayback();
+        }
+      }
+      return {
+        ...prev,
+        isPlaying: nextIsPlaying
+      };
+    });
   };
   const stopTrack = () => {
+    stopSamplePlayback();
     setState((prev) => ({
       ...prev,
       currentTrack: null,
@@ -96,6 +211,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     }));
   };
   const seek = (progress: number) => {
+    sampleBeatRef.current = 0;
     setState((prev) => ({
       ...prev,
       progress,
