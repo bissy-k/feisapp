@@ -1261,11 +1261,26 @@ function Artwork({
       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
           {sessionState === 'paused' ?
         <div className="w-0 h-0 border-y-[7px] border-y-transparent border-l-[10px] border-l-white ml-0.5" /> :
-        <div className="flex items-end gap-1 h-4">
-              <span className="w-[3px] h-3 rounded-sm bg-white" />
-              <span className="w-[3px] h-2 rounded-sm bg-white" />
-              <span className="w-[3px] h-3.5 rounded-sm bg-white" />
-              <span className="w-[3px] h-2.5 rounded-sm bg-white" />
+        <div className="flex items-end gap-1 h-4" aria-hidden="true">
+              {[
+            [12, 6, 14, 9],
+            [8, 14, 7, 12],
+            [14, 9, 15, 6],
+            [10, 15, 8, 13]
+            ].map((heights, index) =>
+            <motion.span
+              key={index}
+              className="w-[3px] rounded-sm bg-white"
+              initial={{ height: heights[0] }}
+              animate={{ height: heights }}
+              transition={{
+                duration: 0.72,
+                repeat: Infinity,
+                repeatType: 'mirror',
+                ease: 'easeInOut',
+                delay: index * 0.08
+              }} />
+            )}
             </div>
         }
         </div>
