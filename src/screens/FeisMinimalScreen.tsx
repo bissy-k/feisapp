@@ -932,7 +932,7 @@ function PracticeSelectionCard({
         <ChevronRight size={16} style={{ color: ACCENT }} />
       </button>
       <div className="mt-[7px] flex items-center gap-[3px]">
-        <span className="w-[23px] text-right text-[8px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
+        <span className="w-[30px] text-right text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
             {formatTime(currentTime)}
         </span>
         <div className="h-[5px] flex-1 rounded-r overflow-hidden" style={{ backgroundColor: '#F8E1DB' }}>
@@ -943,7 +943,7 @@ function PracticeSelectionCard({
               backgroundColor: ACCENT
             }} />
         </div>
-        <span className="w-[23px] text-right text-[8px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
+        <span className="w-[30px] text-right text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
           {formatTime(selectedTrack.duration)}
         </span>
       </div>
