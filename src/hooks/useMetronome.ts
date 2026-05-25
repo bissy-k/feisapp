@@ -9,6 +9,7 @@ export function useMetronome() {
   const [accentFirstBeat, setAccentFirstBeat] = useState(true);
   const [currentBeat, setCurrentBeat] = useState(0);
   const [volume, setVolume] = useState(0.7);
+  const [isMuted, setIsMuted] = useState(false);
   const [sound, setSound] = useState<MetronomeSound>('beep');
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -16,6 +17,7 @@ export function useMetronome() {
   const currentBeatInBarRef = useRef(0);
   const timerIDRef = useRef<number | null>(null);
   const volumeRef = useRef(volume);
+  const isMutedRef = useRef(isMuted);
   const soundRef = useRef<MetronomeSound>(sound);
   const lookahead = 25.0; // ms
   const scheduleAheadTime = 0.1; // s
@@ -24,6 +26,9 @@ export function useMetronome() {
   useEffect(() => {
     volumeRef.current = volume;
   }, [volume]);
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
   useEffect(() => {
     soundRef.current = sound;
   }, [sound]);
@@ -56,6 +61,8 @@ export function useMetronome() {
         },
         (time - audioContextRef.current.currentTime) * 1000
       );
+
+      if (isMutedRef.current) return;
 
       const osc = audioContextRef.current.createOscillator();
       const envelope = audioContextRef.current.createGain();
@@ -193,6 +200,8 @@ export function useMetronome() {
     currentBeat,
     volume,
     setVolume,
+    isMuted,
+    setIsMuted,
     sound,
     setSound
   };

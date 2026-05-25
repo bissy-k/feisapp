@@ -244,7 +244,9 @@ export function FeisMinimalScreen({
     setBeatsPerMeasure,
     accentFirstBeat,
     setAccentFirstBeat,
-    currentBeat
+    currentBeat,
+    isMuted,
+    setIsMuted
   } = useMetronome();
   const {
     currentTrack,
@@ -317,13 +319,14 @@ export function FeisMinimalScreen({
   const defaultTimeSignatureBeats = defaultBeatsForSignature(
     selectedPreset?.timeSignature ?? selectedStyle?.timeSignature
   );
-  const settingsTopClass = selectedTrack ? 'mt-6' : hasSelection ? 'mt-9' : 'mt-4';
+  const settingsTopClass = selectedTrack ? 'mt-3' : hasSelection ? 'mt-9' : 'mt-4';
 
   useEffect(() => {
     if (!selection) {
       setBpm(113);
       setBeatsPerMeasure(4);
       setAccentFirstBeat(false);
+      setIsMuted(false);
     }
     if (selectedPreset) {
       setBpm(selectedPreset.bpm);
@@ -336,6 +339,7 @@ export function FeisMinimalScreen({
         signatureToBeats(selectedStyle?.timeSignature ?? '4/4')
       );
       setAccentFirstBeat(true);
+      setIsMuted(false);
       setSelectedStems([selectedTrack.stem]);
     }
   }, [
@@ -345,7 +349,8 @@ export function FeisMinimalScreen({
     selectedStyle,
     setAccentFirstBeat,
     setBeatsPerMeasure,
-    setBpm
+    setBpm,
+    setIsMuted
   ]);
 
   useEffect(() => {
@@ -424,6 +429,7 @@ export function FeisMinimalScreen({
     if (currentTrack) stopTrack();
     setSelection(null);
     setSelectedStems(['Drums']);
+    setIsMuted(false);
     setSessionState('ready');
   };
 
@@ -517,7 +523,7 @@ export function FeisMinimalScreen({
             onChange={(next) => {
               if (hasSelection) setBpm(next);
             }}
-            size={260}
+            size={selectedTrack ? 220 : 260}
             isPlaying={isPracticePlaying}
             isAccent={accentFirstBeat && currentBeat === 0}
             beatPulseKey={currentBeat}
@@ -573,6 +579,23 @@ export function FeisMinimalScreen({
                   <ChevronRight size={16} style={{ color: ACCENT }} />
                 </span>
               </button>
+              <div className="h-px" style={{ backgroundColor: BORDER }} />
+              <div className="h-[53px] px-4 flex items-center justify-between">
+                <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
+                  Metronome sound
+                </span>
+                <button
+                  onClick={() => setIsMuted(!isMuted)}
+                  className="w-9 h-5 rounded-full transition-colors relative flex-shrink-0 p-0.5 focus:outline-none"
+                  style={{
+                    backgroundColor: isMuted ? BORDER : ACCENT
+                  }}
+                  aria-pressed={!isMuted}
+                  aria-label={isMuted ? 'Turn metronome sound on' : 'Turn metronome sound off'}>
+                  <span
+                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isMuted ? 'left-0.5' : 'left-[18px]'}`} />
+                </button>
+              </div>
               <div className="h-px" style={{ backgroundColor: BORDER }} />
             </>
           }
