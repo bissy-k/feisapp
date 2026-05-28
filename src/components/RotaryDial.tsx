@@ -55,11 +55,12 @@ export function RotaryDial({
   // Map current value to a 270° arc starting at -135° (bottom-left) sweeping to +135° (bottom-right)
   const valueAngle = -135 + (value - min) / range * 270;
   const center = size / 2;
-  const ringRadius = center - 28;
-  const tickRadius = center - 22;
+  const ringStrokeWidth = Math.max(22, size * 0.092);
+  const ringRadius = center - ringStrokeWidth - 16;
+  const tickRadius = ringRadius + ringStrokeWidth * 0.28;
   const progressPath = describeArc(center, ringRadius, -135, valueAngle);
   const railPath = describeArc(center, ringRadius, -135, 135);
-  const innerInset = Math.max(46, size * 0.22);
+  const innerInset = Math.max(54, size * 0.25);
   const getAngle = useCallback((clientX: number, clientY: number) => {
     if (!containerRef.current) return 0;
     const rect = containerRef.current.getBoundingClientRect();
@@ -227,23 +228,23 @@ export function RotaryDial({
           d={railPath}
           fill="none"
           stroke="#EEE7E4"
-          strokeWidth="28"
+          strokeWidth={ringStrokeWidth}
           strokeLinecap="round" />
         <path
           d={railPath}
           fill="none"
           stroke="#FFFFFF"
-          strokeWidth="20"
+          strokeWidth={ringStrokeWidth - 8}
           strokeLinecap="round"
           strokeOpacity="0.68" />
         <motion.path
           d={progressPath}
           fill="none"
           stroke="url(#premiumDialArc)"
-          strokeWidth="28"
+          strokeWidth={ringStrokeWidth}
           strokeLinecap="round"
           filter="url(#premiumArcShadow)"
-          animate={isPlaying ? { strokeWidth: [28, isAccent ? 34 : 31, 28] } : { strokeWidth: 28 }}
+          animate={isPlaying ? { strokeWidth: [ringStrokeWidth, isAccent ? ringStrokeWidth + 5 : ringStrokeWidth + 3, ringStrokeWidth] } : { strokeWidth: ringStrokeWidth }}
           transition={{ duration: 0.22, ease: 'easeOut' }}
           key={`arc-pulse-${beatPulseKey}`} />
 
@@ -256,9 +257,9 @@ export function RotaryDial({
               key={i}
               cx={point.x}
               cy={point.y}
-              r={i % 3 === 0 ? 3.8 : 2.8}
+              r={3.1}
               fill={isActiveTick ? accentColor : '#5E5552'}
-              opacity={isActiveTick ? 0.45 : 0.55} />
+              opacity={isActiveTick ? 0.48 : 0.5} />
           );
         })}
       </svg>

@@ -6,10 +6,12 @@ import {
   ChevronRight,
   Music2,
   Plus,
+  Volume1,
+  Volume2,
   X
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useMetronome } from '../hooks/useMetronome';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { MetronomeSound, useMetronome } from '../hooks/useMetronome';
 import { usePlayer } from '../context/PlayerContext';
 import { RotaryDial } from '../components/RotaryDial';
 import { DANCE_STYLES, Track } from '../data/mockData';
@@ -47,6 +49,10 @@ type PracticeSelection =
 
 type SelectionView = 'root' | 'playlists' | 'tracks';
 type SessionState = 'ready' | 'running' | 'paused';
+type MetronomeBeatOption = {
+  value: MetronomeSound;
+  label: string;
+};
 
 const ACCENT = '#E56D56';
 const BG = '#FBF6F3';
@@ -55,6 +61,20 @@ const TEXT_PRIMARY = '#333333';
 const TEXT_SECONDARY = '#666666';
 const TEXT_TERTIARY = '#595959';
 const BORDER = '#D0D5DD';
+const METRONOME_BEAT_OPTIONS: MetronomeBeatOption[] = [
+  {
+    value: 'beep',
+    label: 'Beep'
+  },
+  {
+    value: 'click',
+    label: 'Click'
+  },
+  {
+    value: 'woodblock',
+    label: 'Woodchip'
+  }
+];
 
 const PRACTICE_PRESETS: PracticePreset[] = [
   {
@@ -245,8 +265,11 @@ export function FeisMinimalScreen({
     accentFirstBeat,
     setAccentFirstBeat,
     currentBeat,
-    isMuted,
-    setIsMuted
+    volume,
+    setVolume,
+    setIsMuted,
+    sound,
+    setSound
   } = useMetronome();
   const {
     currentTrack,
@@ -262,6 +285,7 @@ export function FeisMinimalScreen({
   const [showSelectionSheet, setShowSelectionSheet] = useState(false);
   const [showTimeSigPicker, setShowTimeSigPicker] = useState(false);
   const [showStemPicker, setShowStemPicker] = useState(false);
+  const [showBeatSoundPicker, setShowBeatSoundPicker] = useState(false);
   const [selectionView, setSelectionView] = useState<SelectionView>('root');
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(
     null
@@ -315,11 +339,13 @@ export function FeisMinimalScreen({
   const selectedTrackTime = isSelectedTrackLoaded ? currentTime : 0;
   const selectedStemLabel =
   selectedStems.length > 1 ? selectedStems.join(', ') : selectedStems[0] ?? 'Drums';
+  const metronomeBeatLabel =
+  METRONOME_BEAT_OPTIONS.find((option) => option.value === sound)?.label ?? 'Woodchip';
   const isCustomTempo = hasSelection && defaultBpm > 0 && bpm !== defaultBpm;
   const defaultTimeSignatureBeats = defaultBeatsForSignature(
     selectedPreset?.timeSignature ?? selectedStyle?.timeSignature
   );
-  const settingsTopClass = selectedTrack ? 'mt-3' : hasSelection ? 'mt-9' : 'mt-4';
+  const settingsTopClass = selectedTrack ? 'mt-4' : hasSelection ? 'mt-9' : 'mt-4';
 
   useEffect(() => {
     if (!selection) {
@@ -363,6 +389,10 @@ export function FeisMinimalScreen({
   useEffect(() => {
     if (!selectedTrack) setShowStemPicker(false);
   }, [selectedTrack]);
+
+  useEffect(() => {
+    if (!hasSelection) setShowBeatSoundPicker(false);
+  }, [hasSelection]);
 
   useEffect(() => {
     return () => {
@@ -512,6 +542,8 @@ export function FeisMinimalScreen({
           sessionState={sessionState}
           onOpen={() => setShowSelectionSheet(true)} />
 
+        {hasSelection &&
+        <>
         <div
           className={`flex flex-col items-center justify-center transition-opacity ${selectedTrack ? 'mt-4' : 'mt-5'} ${hasSelection ? 'opacity-100' : 'opacity-50'}`}>
           
@@ -523,7 +555,7 @@ export function FeisMinimalScreen({
             onChange={(next) => {
               if (hasSelection) setBpm(next);
             }}
-            size={selectedTrack ? 220 : 260}
+            size={272}
             isPlaying={isPracticePlaying}
             isAccent={accentFirstBeat && currentBeat === 0}
             beatPulseKey={currentBeat}
@@ -533,7 +565,7 @@ export function FeisMinimalScreen({
               <div className="text-[12px] text-[#737373] tabular-nums mb-1 tracking-[0.3px]">
                 {speedPercent}%
               </div>
-              <div className="text-[64px] font-medium tracking-[-3.2px] text-[#171717] leading-none">
+              <div className="text-[58px] font-medium tracking-[-2.4px] text-[#171717] leading-none">
                 {displayBpm}
               </div>
               <div className="text-[12px] font-medium text-[#737373] tracking-[0.3px] mt-2">
@@ -580,23 +612,6 @@ export function FeisMinimalScreen({
                 </span>
               </button>
               <div className="h-px" style={{ backgroundColor: BORDER }} />
-              <div className="h-[53px] px-4 flex items-center justify-between">
-                <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
-                  Metronome sound
-                </span>
-                <button
-                  onClick={() => setIsMuted(!isMuted)}
-                  className="w-9 h-5 rounded-full transition-colors relative flex-shrink-0 p-0.5 focus:outline-none"
-                  style={{
-                    backgroundColor: isMuted ? BORDER : ACCENT
-                  }}
-                  aria-pressed={!isMuted}
-                  aria-label={isMuted ? 'Turn metronome sound on' : 'Turn metronome sound off'}>
-                  <span
-                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isMuted ? 'left-0.5' : 'left-[18px]'}`} />
-                </button>
-              </div>
-              <div className="h-px" style={{ backgroundColor: BORDER }} />
             </>
           }
 
@@ -625,6 +640,69 @@ export function FeisMinimalScreen({
             </span>
           </button>
           <div className="h-px" style={{ backgroundColor: BORDER }} />
+          <button
+            onClick={() => {
+              if (hasSelection) setShowBeatSoundPicker(true);
+            }}
+            disabled={!hasSelection}
+            className={`w-full h-[53px] px-4 flex items-center justify-between focus:outline-none ${hasSelection ? 'active:bg-neutral-50' : 'cursor-not-allowed'}`}
+            style={{
+              opacity: hasSelection ? 1 : 0.45
+            }}
+            aria-label="Change metronome beat sound">
+            
+            <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
+              Metronome beats
+            </span>
+            <span
+              className="flex items-center gap-1 text-[12px] leading-4 tracking-[0.5px]"
+              style={{
+                color: TEXT_TERTIARY
+              }}>
+              
+              {metronomeBeatLabel}
+              <ChevronRight size={16} style={{ color: hasSelection ? ACCENT : TEXT_TERTIARY }} />
+            </span>
+          </button>
+          <div className="h-px" style={{ backgroundColor: BORDER }} />
+          <div
+            className="h-[60px] px-4 flex items-center gap-3"
+            style={{
+              opacity: hasSelection ? 1 : 0.45
+            }}>
+            <Volume1 size={20} strokeWidth={2} style={{ color: ACCENT }} />
+            <div className="relative h-8 flex-1 flex items-center">
+              <div className="absolute left-0 right-0 h-[5px] rounded-full" style={{ backgroundColor: '#E6E1DE' }} />
+              <div
+                className="absolute left-0 h-[5px] rounded-full"
+                style={{
+                  width: `${Math.round(volume * 100)}%`,
+                  backgroundColor: ACCENT
+                }} />
+              <div
+                className="absolute top-1/2 h-9 w-9 -translate-y-1/2 rounded-2xl bg-white"
+                style={{
+                  left: `calc(${Math.round(volume * 100)}% - 18px)`,
+                  boxShadow: '0 5px 12px rgba(80, 56, 49, 0.18), 0 1px 2px rgba(80, 56, 49, 0.12)'
+                }} />
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={volume}
+                onChange={(event) => {
+                  const nextVolume = Number(event.target.value);
+                  setVolume(nextVolume);
+                  setIsMuted(nextVolume === 0);
+                }}
+                disabled={!hasSelection}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                aria-label="Metronome beat volume" />
+            </div>
+            <Volume2 size={20} strokeWidth={2} style={{ color: ACCENT }} />
+          </div>
+          <div className="h-px" style={{ backgroundColor: BORDER }} />
           <div
             className="h-[53px] px-4 flex items-center justify-between"
             style={{
@@ -651,6 +729,8 @@ export function FeisMinimalScreen({
             </button>
           </div>
         </div>
+        </>
+        }
 
       </div>
 
@@ -762,6 +842,41 @@ export function FeisMinimalScreen({
             </div>
           </div>
           </PickerSheet>
+        }
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showBeatSoundPicker &&
+        <PickerSheet
+          title="Metronome beats"
+          onClose={() => setShowBeatSoundPicker(false)}>
+          
+          <div className="px-4 py-3">
+            <div className="rounded-xl overflow-hidden bg-white">
+              {METRONOME_BEAT_OPTIONS.map((option) => {
+              const isActive = sound === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    setSound(option.value);
+                    setShowBeatSoundPicker(false);
+                  }}
+                  className="w-full h-[53px] px-4 flex items-center gap-4 text-left border-b last:border-b-0 active:bg-neutral-50 focus:outline-none"
+                  style={{
+                    borderColor: BORDER
+                  }}>
+                  
+                  <Radio checked={isActive} />
+                  <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
+                    {option.label}
+                  </span>
+                </button>);
+
+            })}
+            </div>
+          </div>
+        </PickerSheet>
         }
       </AnimatePresence>
 
@@ -879,32 +994,52 @@ function PracticeSelectionCard({
   sessionState: SessionState;
   onOpen: () => void;
 }) {
+  const shouldReduceMotion = useReducedMotion();
+
   if (!preset && !track) {
     return (
-      <button
+      <motion.button
         onClick={onOpen}
-        className="w-full rounded-xl px-4 py-4 border-2 border-dashed text-center active:scale-[0.99] transition-transform"
+        initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
+        animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+        whileTap={shouldReduceMotion ? undefined : { scale: 0.99 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full rounded-xl px-4 py-10 text-center transition-transform focus:outline-none"
         style={{
-          borderColor: '#A3A3A3',
-          backgroundColor: 'transparent'
+          backgroundColor: 'transparent',
+          border: `1.5px dashed ${BORDER}`
         }}
-        aria-label="Select preset or downloaded track">
+        aria-label="Choose practice preset or downloaded track">
         
-        <div className="text-[16px] font-semibold leading-5 tracking-[-0.27px] mb-1" style={{ color: '#1C170D' }}>
-          Select presets or tracks
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative h-6 w-6" style={{ color: ACCENT }}>
+            <Music2 size={24} strokeWidth={2} />
+            <Plus
+              size={11}
+              strokeWidth={2.4}
+              className="absolute -left-1 -top-1"
+              style={{ color: ACCENT }} />
+          </div>
+
+          <div className="w-full max-w-[260px]">
+            <div className="text-[16px] font-semibold leading-5 tracking-[-0.27px]" style={{ color: '#1C170D' }}>
+              Choose your practice
+            </div>
+            <div className="text-[12px] font-medium leading-[18px] mt-1" style={{ color: TEXT_SECONDARY }}>
+              Start with a preset tempo or a downloaded track.
+            </div>
+          </div>
+
+          <span
+            className="inline-flex h-9 min-w-[77px] items-center justify-center rounded-full px-4 text-[14px] font-semibold leading-5 tracking-[-0.4px] text-white"
+            style={{
+              backgroundColor: ACCENT,
+              boxShadow: '0 20px 24px -4px rgba(16, 24, 40, 0.08), 0 8px 8px -4px rgba(16, 24, 40, 0.03)'
+            }}>
+            Select
+          </span>
         </div>
-        <div className="text-[12px] font-medium leading-[18px] max-w-[260px] mx-auto mb-4" style={{ color: TEXT_SECONDARY }}>
-          Add presets or downloaded track you want to practise with.
-        </div>
-        <span
-          className="inline-flex h-7 min-w-[77px] items-center justify-center rounded-full px-4 text-[14px] font-semibold leading-5 tracking-[-0.4px] text-white"
-          style={{
-            backgroundColor: ACCENT
-          }}>
-          
-          Select
-        </span>
-      </button>);
+      </motion.button>);
 
   }
 
@@ -1004,16 +1139,16 @@ function SelectionSheet({
 
   const title =
   view === 'root' ?
-  'Select preset or track' :
+  'Choose your practice' :
   view === 'playlists' ?
-  'Select a track' :
-  'Select a track';
+  'Downloaded tracks' :
+  'Choose a track';
 
   const subtitle =
   view === 'playlists' ?
-  'Only downloaded tracks are visible' :
+  'Pick from music saved on this device.' :
   view === 'tracks' ?
-  'Select downloaded tracks' :
+  'Choose one track for this practice session.' :
   undefined;
 
   return (
@@ -1040,12 +1175,12 @@ function SelectionSheet({
               <Plus size={22} />
             </span>
             <span className="text-[14px] font-semibold" style={{ color: ACCENT }}>
-              Select a downloaded track
+              Browse downloaded tracks
             </span>
           </button>
 
           <div className="text-[12px] font-semibold text-neutral-500 mb-2 px-1">
-            Presets
+            Preset tempos
           </div>
           <div className="rounded-xl overflow-hidden bg-white">
             {PRACTICE_PRESETS.map((preset) => {
@@ -1074,12 +1209,12 @@ function SelectionSheet({
       }
 
       {view === 'playlists' &&
-      <div className="px-3 py-3 space-y-2">
+      <div className="px-3 pt-4 pb-3 space-y-3">
           {DOWNLOADED_PLAYLISTS.map((item) =>
         <button
           key={item.id}
           onClick={() => onSelectPlaylist(item.id)}
-          className="w-full min-h-[66px] rounded-xl bg-white px-3 py-3 flex items-center gap-3 text-left active:bg-neutral-50">
+          className="w-full min-h-[70px] rounded-xl bg-white px-3 py-3 flex items-center gap-3 text-left active:bg-neutral-50">
           
               <div
             className="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0"
@@ -1094,7 +1229,7 @@ function SelectionSheet({
                   {item.name}
                 </div>
                 <div className="text-[12px] text-neutral-500">
-                  Downloaded · {item.count} Songs
+                  {item.count} downloaded tracks
                 </div>
               </div>
             </button>
@@ -1185,9 +1320,9 @@ function PickerSheet({
           backgroundColor: BG
         }}>
         
-        <div className="w-9 h-[5px] bg-[rgba(60,60,67,0.3)] rounded-full mx-auto mt-[10px]" />
+        <div className="w-9 h-[5px] bg-[rgba(60,60,67,0.3)] rounded-full mx-auto mt-[12px] mb-[10px]" />
         <div
-          className="h-[47px] px-4 flex items-end justify-between pb-3 border-b"
+          className="min-h-[58px] px-4 flex items-start justify-between pb-4 border-b"
           style={{
             borderColor: 'rgba(60,60,67,0.36)'
           }}>

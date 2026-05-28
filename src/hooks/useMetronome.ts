@@ -10,7 +10,7 @@ export function useMetronome() {
   const [currentBeat, setCurrentBeat] = useState(0);
   const [volume, setVolume] = useState(0.7);
   const [isMuted, setIsMuted] = useState(false);
-  const [sound, setSound] = useState<MetronomeSound>('beep');
+  const [sound, setSound] = useState<MetronomeSound>('woodblock');
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextNoteTimeRef = useRef(0);
