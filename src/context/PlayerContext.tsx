@@ -11,6 +11,7 @@ type PlayerState = {
   isPlaying: boolean;
   progress: number; // 0 to 1
   currentTime: number; // in seconds
+  playbackBpm: number | null;
   isLooping: boolean;
   loopStart: number; // 0 to 1
   loopEnd: number; // 0 to 1
@@ -20,6 +21,7 @@ type PlayerContextType = PlayerState & {
   playTrack: (track: Track) => void;
   togglePlayPause: () => void;
   stopTrack: () => void;
+  setPlaybackBpm: (bpm: number | null) => void;
   seek: (progress: number) => void;
   skipForward: () => void;
   skipBackward: () => void;
@@ -34,6 +36,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     isPlaying: false,
     progress: 0,
     currentTime: 0,
+    playbackBpm: null,
     isLooping: false,
     loopStart: 0,
     loopEnd: 1,
@@ -94,12 +97,12 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     source.start(startTime);
   };
 
-  const scheduleSampleBeat = (track: Track) => {
+  const scheduleSampleBeat = (track: Track, playbackBpm = track.bpm) => {
     const context = getAudioContext();
     if (!context) return;
     const beat = sampleBeatRef.current;
     const startTime = context.currentTime + 0.015;
-    const beatDuration = 60 / track.bpm;
+    const beatDuration = 60 / playbackBpm;
     const root = 146.83;
     const fifth = 220;
 
@@ -125,13 +128,17 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     }
   };
 
-  const startSamplePlayback = (track: Track, resetBeat = false) => {
+  const startSamplePlayback = (
+    track: Track,
+    resetBeat = false,
+    playbackBpm = track.bpm
+  ) => {
     stopSamplePlayback();
     if (resetBeat) sampleBeatRef.current = 0;
-    scheduleSampleBeat(track);
+    scheduleSampleBeat(track, playbackBpm);
     sampleIntervalRef.current = window.setInterval(() => {
-      scheduleSampleBeat(track);
-    }, 60 / track.bpm * 1000);
+      scheduleSampleBeat(track, playbackBpm);
+    }, 60 / playbackBpm * 1000);
   };
 
   useEffect(() => {
@@ -139,7 +146,9 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       progressInterval.current = window.setInterval(() => {
         setState((prev) => {
           if (!prev.currentTrack) return prev;
-          const newTime = prev.currentTime + 0.1; // Update every 100ms
+          const effectiveBpm = prev.playbackBpm ?? prev.currentTrack.bpm;
+          const playbackRate = effectiveBpm / prev.currentTrack.bpm;
+          const newTime = prev.currentTime + 0.1 * playbackRate; // Update every 100ms
           let newProgress = newTime / prev.currentTrack.duration;
           if (prev.isLooping && newProgress >= prev.loopEnd) {
             newProgress = prev.loopStart;
@@ -165,7 +174,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     return () => {
       if (progressInterval.current) clearInterval(progressInterval.current);
     };
-  }, [state.isPlaying, state.currentTrack, state.isLooping]);
+  }, [state.isPlaying, state.currentTrack, state.isLooping, state.playbackBpm]);
 
   useEffect(() => {
     return () => {
@@ -175,13 +184,15 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   }, []);
 
   const playTrack = (track: Track) => {
-    startSamplePlayback(track, true);
+    const playbackBpm = state.playbackBpm ?? track.bpm;
+    startSamplePlayback(track, true, playbackBpm);
     setState((prev) => ({
       ...prev,
       currentTrack: track,
       isPlaying: true,
       progress: 0,
-      currentTime: 0
+      currentTime: 0,
+      playbackBpm
     }));
   };
   const togglePlayPause = () => {
@@ -189,7 +200,11 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       const nextIsPlaying = !prev.isPlaying;
       if (prev.currentTrack) {
         if (nextIsPlaying) {
-          startSamplePlayback(prev.currentTrack);
+          startSamplePlayback(
+            prev.currentTrack,
+            false,
+            prev.playbackBpm ?? prev.currentTrack.bpm
+          );
         } else {
           stopSamplePlayback();
         }
@@ -207,8 +222,20 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       currentTrack: null,
       isPlaying: false,
       progress: 0,
-      currentTime: 0
+      currentTime: 0,
+      playbackBpm: null
     }));
+  };
+  const setPlaybackBpm = (bpm: number | null) => {
+    setState((prev) => {
+      if (prev.isPlaying && prev.currentTrack && bpm) {
+        startSamplePlayback(prev.currentTrack, false, bpm);
+      }
+      return {
+        ...prev,
+        playbackBpm: bpm
+      };
+    });
   };
   const seek = (progress: number) => {
     sampleBeatRef.current = 0;
@@ -270,6 +297,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
         playTrack,
         togglePlayPause,
         stopTrack,
+        setPlaybackBpm,
         seek,
         skipForward,
         skipBackward,

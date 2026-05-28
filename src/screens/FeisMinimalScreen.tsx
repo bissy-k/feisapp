@@ -277,6 +277,7 @@ export function FeisMinimalScreen({
     playTrack,
     togglePlayPause,
     stopTrack,
+    setPlaybackBpm,
     progress,
     currentTime
   } = usePlayer();
@@ -353,11 +354,13 @@ export function FeisMinimalScreen({
       setBeatsPerMeasure(4);
       setAccentFirstBeat(false);
       setIsMuted(false);
+      setPlaybackBpm(null);
     }
     if (selectedPreset) {
       setBpm(selectedPreset.bpm);
       setBeatsPerMeasure(signatureToBeats(selectedPreset.timeSignature));
       setAccentFirstBeat(selectedPreset.accentFirstBeat);
+      setPlaybackBpm(null);
     }
     if (selectedTrack) {
       setBpm(selectedTrack.bpm);
@@ -367,6 +370,7 @@ export function FeisMinimalScreen({
       setAccentFirstBeat(true);
       setIsMuted(false);
       setSelectedStems([selectedTrack.stem]);
+      setPlaybackBpm(selectedTrack.bpm);
     }
   }, [
     selection,
@@ -378,6 +382,12 @@ export function FeisMinimalScreen({
     setBpm,
     setIsMuted
   ]);
+
+  useEffect(() => {
+    if (selectedTrack) {
+      setPlaybackBpm(bpm);
+    }
+  }, [bpm, selectedTrack]);
 
   useEffect(() => {
     if (!showSelectionSheet) {
@@ -736,16 +746,19 @@ export function FeisMinimalScreen({
 
       {hasSelection &&
       <div
-        className="absolute left-0 right-0 z-50 flex justify-center gap-2 overflow-hidden rounded-t-lg bg-white p-4 pointer-events-none"
+        className="absolute left-0 right-0 z-50 flex items-end justify-center gap-2 px-4 pb-4 pt-10 pointer-events-none"
         style={{
-          bottom: actionBottomOffset
+          bottom: actionBottomOffset,
+          background:
+          'linear-gradient(to top, rgba(251, 246, 243, 0.98) 0%, rgba(251, 246, 243, 0.82) 54%, rgba(251, 246, 243, 0) 100%)'
         }}>
         <button
           onClick={handleCancelSession}
           className="h-12 flex-1 rounded-full px-4 font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center transition-transform pointer-events-auto active:scale-95 focus:outline-none"
           style={{
-            backgroundColor: 'rgba(229,109,86,0.15)',
-            color: ACCENT
+            backgroundColor: '#F8E1DB',
+            color: ACCENT,
+            boxShadow: '0 10px 24px rgba(80, 56, 49, 0.06)'
           }}
           aria-label="Cancel metronome session">
           
@@ -755,7 +768,8 @@ export function FeisMinimalScreen({
           onClick={handlePrimaryAction}
           className="h-12 flex-1 rounded-full px-4 font-semibold text-[14px] leading-5 tracking-[-0.4px] flex items-center justify-center text-white transition-transform pointer-events-auto active:scale-95 focus:outline-none"
           style={{
-            backgroundColor: ACCENT
+            backgroundColor: ACCENT,
+            boxShadow: '0 14px 28px rgba(229, 109, 86, 0.24)'
           }}
           aria-label={`${primaryActionLabel.toLowerCase()} metronome session`}>
           
