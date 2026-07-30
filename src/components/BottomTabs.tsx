@@ -24,7 +24,7 @@ export function BottomTabs({ activeTab, onChange }: BottomTabsProps) {
   },
   {
     id: 'practice',
-    label: 'Metronome',
+    label: 'Tempo',
     icon: PlaySquare
   },
   {

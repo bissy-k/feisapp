@@ -550,8 +550,8 @@ export function FeisMinimalScreen({
           style={{
             color: TEXT_PRIMARY
           }}>
-          
-          Metronome
+
+          Tempo
         </div>
         <div className="w-7" />
       </header>

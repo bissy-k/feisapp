@@ -82,7 +82,7 @@ export function HomeScreen({
               <Clock size={20} />
             </div>
             <div className="text-left">
-              <div className="font-semibold text-[16px]">Metronome</div>
+              <div className="font-semibold text-[16px]">Tempo</div>
               <div className="text-neutral-500 text-[13px] mt-0.5">
                 Standalone
               </div>
