@@ -33,14 +33,15 @@ export function useMetronome() {
     soundRef.current = sound;
   }, [sound]);
 
-  const initAudio = useCallback(() => {
+  const initAudio = useCallback(async () => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext ||
       (window as any).webkitAudioContext)();
     }
     if (audioContextRef.current.state === 'suspended') {
-      audioContextRef.current.resume();
+      await audioContextRef.current.resume();
     }
+    return audioContextRef.current;
   }, []);
 
   const nextNote = useCallback(() => {
@@ -113,16 +114,16 @@ export function useMetronome() {
   }, [nextNote, scheduleNote]);
 
   useEffect(() => {
+    let isCancelled = false;
+
     if (isPlaying) {
-      initAudio();
-      if (audioContextRef.current) {
-        if (audioContextRef.current.state === 'suspended') {
-          audioContextRef.current.resume();
-        }
-        nextNoteTimeRef.current = audioContextRef.current.currentTime + 0.05;
+      void initAudio().then((context) => {
+        if (isCancelled || !context) return;
+
+        nextNoteTimeRef.current = context.currentTime + 0.05;
         currentBeatInBarRef.current = 0;
         scheduler();
-      }
+      });
     } else {
       if (timerIDRef.current !== null) {
         window.clearTimeout(timerIDRef.current);
@@ -131,15 +132,16 @@ export function useMetronome() {
     }
 
     return () => {
+      isCancelled = true;
       if (timerIDRef.current !== null) {
         window.clearTimeout(timerIDRef.current);
       }
     };
   }, [isPlaying, scheduler, initAudio]);
 
-  const togglePlay = useCallback(() => {
+  const togglePlay = useCallback(async () => {
     if (!isPlaying) {
-      initAudio();
+      await initAudio();
     }
     setIsPlaying((prev) => !prev);
   }, [isPlaying, initAudio]);
@@ -152,10 +154,10 @@ export function useMetronome() {
   const previewClicks = useCallback(
     (count: number) => {
       if (!audioContextRef.current) {
-        initAudio();
+        void initAudio();
       }
       if (audioContextRef.current?.state === 'suspended') {
-        audioContextRef.current.resume();
+        void audioContextRef.current.resume();
       }
 
       let time = audioContextRef.current!.currentTime + 0.1;

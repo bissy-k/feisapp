@@ -19,6 +19,7 @@ import { DANCE_STYLES, Track } from '../data/mockData';
 interface FeisMinimalScreenProps {
   onClose?: () => void;
   embedded?: boolean;
+  initialPresetId?: string | null;
 }
 
 type PracticePreset = {
@@ -252,7 +253,8 @@ function formatTime(seconds: number) {
 
 export function FeisMinimalScreen({
   onClose,
-  embedded = false
+  embedded = false,
+  initialPresetId = null
 }: FeisMinimalScreenProps) {
   const {
     isPlaying,
@@ -282,7 +284,14 @@ export function FeisMinimalScreen({
     currentTime
   } = usePlayer();
 
-  const [selection, setSelection] = useState<PracticeSelection | null>(null);
+  const [selection, setSelection] = useState<PracticeSelection | null>(
+    initialPresetId ?
+    {
+      type: 'preset',
+      presetId: initialPresetId
+    } :
+    null
+  );
   const [showSelectionSheet, setShowSelectionSheet] = useState(false);
   const [showTimeSigPicker, setShowTimeSigPicker] = useState(false);
   const [showStemPicker, setShowStemPicker] = useState(false);
@@ -347,6 +356,16 @@ export function FeisMinimalScreen({
     selectedPreset?.timeSignature ?? selectedStyle?.timeSignature
   );
   const settingsTopClass = selectedTrack ? 'mt-4' : hasSelection ? 'mt-9' : 'mt-4';
+
+  useEffect(() => {
+    if (!initialPresetId) return;
+    setSelection({
+      type: 'preset',
+      presetId: initialPresetId
+    });
+    setSessionState('ready');
+    setShowSelectionSheet(false);
+  }, [initialPresetId]);
 
   useEffect(() => {
     if (!selection) {

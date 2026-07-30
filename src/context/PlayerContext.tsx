@@ -54,10 +54,16 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       if (!AudioContextConstructor) return null;
       audioContextRef.current = new AudioContextConstructor();
     }
-    if (audioContextRef.current.state === 'suspended') {
-      void audioContextRef.current.resume();
-    }
     return audioContextRef.current;
+  };
+
+  const unlockAudioContext = async () => {
+    const context = getAudioContext();
+    if (!context) return null;
+    if (context.state === 'suspended') {
+      await context.resume();
+    }
+    return context;
   };
 
   const playPulse = (
@@ -128,11 +134,14 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     }
   };
 
-  const startSamplePlayback = (
+  const startSamplePlayback = async (
     track: Track,
     resetBeat = false,
     playbackBpm = track.bpm
   ) => {
+    const context = await unlockAudioContext();
+    if (!context) return;
+
     stopSamplePlayback();
     if (resetBeat) sampleBeatRef.current = 0;
     scheduleSampleBeat(track, playbackBpm);
@@ -183,9 +192,9 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     };
   }, []);
 
-  const playTrack = (track: Track) => {
+  const playTrack = async (track: Track) => {
     const playbackBpm = state.playbackBpm ?? track.bpm;
-    startSamplePlayback(track, true, playbackBpm);
+    await startSamplePlayback(track, true, playbackBpm);
     setState((prev) => ({
       ...prev,
       currentTrack: track,
@@ -195,20 +204,22 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       playbackBpm
     }));
   };
-  const togglePlayPause = () => {
-    setState((prev) => {
-      const nextIsPlaying = !prev.isPlaying;
-      if (prev.currentTrack) {
-        if (nextIsPlaying) {
-          startSamplePlayback(
-            prev.currentTrack,
-            false,
-            prev.playbackBpm ?? prev.currentTrack.bpm
-          );
-        } else {
-          stopSamplePlayback();
-        }
+  const togglePlayPause = async () => {
+    const nextIsPlaying = !state.isPlaying;
+
+    if (state.currentTrack) {
+      if (nextIsPlaying) {
+        await startSamplePlayback(
+          state.currentTrack,
+          false,
+          state.playbackBpm ?? state.currentTrack.bpm
+        );
+      } else {
+        stopSamplePlayback();
       }
+    }
+
+    setState((prev) => {
       return {
         ...prev,
         isPlaying: nextIsPlaying
@@ -229,7 +240,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   const setPlaybackBpm = (bpm: number | null) => {
     setState((prev) => {
       if (prev.isPlaying && prev.currentTrack && bpm) {
-        startSamplePlayback(prev.currentTrack, false, bpm);
+        void startSamplePlayback(prev.currentTrack, false, bpm);
       }
       return {
         ...prev,

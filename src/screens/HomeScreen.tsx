@@ -11,7 +11,7 @@ interface HomeScreenProps {
   onNavigateToSearch: () => void;
   onNavigateToStyle: (styleId: string) => void;
   onNavigateToPractice: () => void;
-  onOpenFeis?: () => void;
+  onOpenFeis?: (presetId?: string) => void;
 }
 export function HomeScreen({
   onNavigateToSearch,
@@ -55,7 +55,13 @@ export function HomeScreen({
         </h2>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={onOpenFeis ?? onNavigateToPractice}
+            onClick={() => {
+              if (onOpenFeis) {
+                onOpenFeis('reel');
+                return;
+              }
+              onNavigateToPractice();
+            }}
             className="bg-[#14b8a6] text-white p-4 rounded-2xl flex flex-col gap-3 active:scale-95 transition-transform shadow-sm">
             
             <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center">

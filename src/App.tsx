@@ -19,6 +19,9 @@ function AppContent() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNowPlayingOpen, setIsNowPlayingOpen] = useState(false);
   const [isFeisOpen, setIsFeisOpen] = useState(false);
+  const [feisInitialPresetId, setFeisInitialPresetId] = useState<string | null>(
+    null
+  );
   const handleNavigateToStyle = (styleId: string) => {
     setActiveStyleId(styleId);
   };
@@ -43,7 +46,10 @@ function AppContent() {
             onNavigateToSearch={() => setIsSearchOpen(true)}
             onNavigateToStyle={handleNavigateToStyle}
             onNavigateToPractice={() => setActiveTab('practice')}
-            onOpenFeis={() => setIsFeisOpen(true)} />
+            onOpenFeis={(presetId) => {
+              setFeisInitialPresetId(presetId ?? null);
+              setIsFeisOpen(true);
+            }} />
           
         </div>
 
@@ -107,12 +113,18 @@ function AppContent() {
             onClose={() => setIsNowPlayingOpen(false)}
             onOpenPractice={() => {
               setIsNowPlayingOpen(false);
+              setFeisInitialPresetId(null);
               setIsFeisOpen(true);
             }} />
 
           }
           {isFeisOpen &&
-          <FeisMinimalScreen onClose={() => setIsFeisOpen(false)} />
+          <FeisMinimalScreen
+            initialPresetId={feisInitialPresetId}
+            onClose={() => {
+              setIsFeisOpen(false);
+              setFeisInitialPresetId(null);
+            }} />
           }
         </AnimatePresence>
       </div>
