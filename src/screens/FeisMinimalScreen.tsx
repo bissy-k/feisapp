@@ -1414,7 +1414,7 @@ function StemsMixerPanel({
 }) {
   return (
     <PickerSheet title="Stems mixer" onClose={onClose} closeIcon>
-      <div className="flex gap-3 overflow-x-auto px-4 py-4 snap-x snap-mandatory scrollbar-none">
+      <div className="flex gap-2.5 overflow-x-auto px-4 pt-2 pb-5 snap-x snap-mandatory scrollbar-none">
         {STEM_DEFS.map(({ id, label }) => {
           const channel = stems[id];
           const isSoloed = soloedStemIds.includes(id);
@@ -1422,32 +1422,34 @@ function StemsMixerPanel({
           return (
             <div
               key={id}
-              className="snap-center shrink-0 w-[104px] rounded-xl flex flex-col items-center py-4 gap-3 shadow-sm"
+              className="snap-center shrink-0 w-[92px] rounded-2xl flex flex-col items-center pt-4 pb-3 px-2 shadow-sm"
               style={{
                 backgroundColor: CARD_BG,
                 opacity: disabled ? 0.45 : 1
               }}>
 
-              <span className="text-[13px] font-semibold" style={{ color: TEXT_PRIMARY }}>
+              <span className="text-[13px] font-semibold leading-4" style={{ color: TEXT_PRIMARY }}>
                 {label}
               </span>
-              <VerticalFader
-                value={channel.volume}
-                onChange={(volume) => onVolumeChange(id, volume)}
-                disabled={disabled}
-                accentColor={ACCENT}
-                label={`${label} volume`}
-                height={150} />
+              <div className="mt-4 mb-4">
+                <VerticalFader
+                  value={channel.volume}
+                  onChange={(volume) => onVolumeChange(id, volume)}
+                  disabled={disabled}
+                  accentColor={ACCENT}
+                  label={`${label} volume`}
+                  height={124} />
 
-              <div className="flex flex-col gap-1.5 w-full px-2">
+              </div>
+              <div className="flex flex-col gap-1.5 w-full">
                 <button
                   onClick={() => onToggleSolo(id)}
                   disabled={disabled}
                   aria-pressed={isSoloed}
                   aria-label={`Solo ${label}`}
-                  className="h-7 rounded-md text-[11px] font-bold"
+                  className="h-8 rounded-lg text-[12px] font-bold transition-colors"
                   style={{
-                    backgroundColor: isSoloed ? ACCENT : '#E6E1DE',
+                    backgroundColor: isSoloed ? ACCENT : '#F0EBE8',
                     color: isSoloed ? '#FFFFFF' : TEXT_SECONDARY
                   }}>
 
@@ -1458,20 +1460,18 @@ function StemsMixerPanel({
                   disabled={disabled}
                   aria-pressed={channel.muted}
                   aria-label={`Mute ${label}`}
-                  className="h-7 rounded-md text-[11px] font-bold"
+                  className="h-8 rounded-lg text-[12px] font-bold transition-colors"
                   style={{
-                    backgroundColor: channel.muted ? ACCENT : '#E6E1DE',
+                    backgroundColor: channel.muted ? ACCENT : '#F0EBE8',
                     color: channel.muted ? '#FFFFFF' : TEXT_SECONDARY
                   }}>
 
                   M
                 </button>
               </div>
-              {!isAudible &&
-              <span className="text-[10px]" style={{ color: TEXT_TERTIARY }}>
-                  Silent
-                </span>
-              }
+              <span className="mt-2 text-[10px] leading-3 h-3" style={{ color: TEXT_TERTIARY }}>
+                {!isAudible ? 'Silent' : ''}
+              </span>
             </div>);
 
         })}

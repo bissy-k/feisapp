@@ -10,6 +10,10 @@ interface VerticalFaderProps {
   height?: number;
 }
 
+const TRACK_WIDTH = 4;
+const CAP_WIDTH = 26;
+const CAP_HEIGHT = 12;
+
 export function VerticalFader({
   value,
   onChange,
@@ -17,7 +21,7 @@ export function VerticalFader({
   accentColor = '#E56D56',
   trackColor = '#E6E1DE',
   label,
-  height = 150
+  height = 128
 }: VerticalFaderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -72,7 +76,11 @@ export function VerticalFader({
     }
   };
 
-  const pct = Math.round(localValue * 100);
+  // Pixel-based, not percentage-based: the cap's own bottom edge is placed
+  // between 0 and (height - CAP_HEIGHT), so it can never travel past the
+  // track's bounds regardless of value or cap size.
+  const capBottom = localValue * (height - CAP_HEIGHT);
+  const fillHeight = capBottom + CAP_HEIGHT / 2;
 
   return (
     <div
@@ -89,27 +97,46 @@ export function VerticalFader({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      className={`relative w-3 rounded-full touch-none ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      className={`relative touch-none ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       style={{
         height,
-        backgroundColor: trackColor,
+        width: CAP_WIDTH,
         opacity: disabled ? 0.5 : 1
       }}>
 
       <div
-        className="absolute bottom-0 left-0 right-0 rounded-full"
+        className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 rounded-full"
         style={{
-          height: `${pct}%`,
+          width: TRACK_WIDTH,
+          backgroundColor: trackColor
+        }} />
+
+      <div
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full"
+        style={{
+          width: TRACK_WIDTH,
+          height: fillHeight,
           backgroundColor: accentColor
         }} />
 
       <div
-        className={`absolute left-1/2 h-9 w-9 -translate-x-1/2 rounded-2xl bg-white transition-transform ${isDragging ? 'scale-110' : ''}`}
+        className={`absolute left-1/2 -translate-x-1/2 rounded-full bg-white transition-transform ${isDragging ? 'scale-110' : ''}`}
         style={{
-          bottom: `calc(${pct}% - 18px)`,
-          boxShadow: '0 5px 12px rgba(80, 56, 49, 0.18), 0 1px 2px rgba(80, 56, 49, 0.12)'
-        }} />
+          bottom: capBottom,
+          width: CAP_WIDTH,
+          height: CAP_HEIGHT,
+          boxShadow: '0 3px 8px rgba(80, 56, 49, 0.2), 0 1px 2px rgba(80, 56, 49, 0.14)'
+        }}>
 
+        <div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{
+            width: CAP_WIDTH - 8,
+            height: 2,
+            backgroundColor: accentColor
+          }} />
+
+      </div>
     </div>);
 
 }
