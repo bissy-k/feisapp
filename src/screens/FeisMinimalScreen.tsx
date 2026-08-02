@@ -12,8 +12,9 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { MetronomeSound, useMetronome } from '../hooks/useMetronome';
-import { usePlayer } from '../context/PlayerContext';
+import { StemId, STEM_DEFS, usePlayer } from '../context/PlayerContext';
 import { RotaryDial } from '../components/RotaryDial';
+import { VerticalFader } from '../components/VerticalFader';
 import { DANCE_STYLES, Track } from '../data/mockData';
 
 interface FeisMinimalScreenProps {
@@ -139,7 +140,7 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 194,
     artworkColor: '#F39A3D',
     stem: 'Drums',
-    stems: ['Drums', 'Piano', 'Bass'],
+    stems: ['Drums', 'Bass', 'Keys'],
     isDownloaded: true
   },
   {
@@ -151,7 +152,7 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 208,
     artworkColor: '#E05D4F',
     stem: 'Drums',
-    stems: ['Drums', 'Piano', 'Bass'],
+    stems: ['Drums', 'Bass', 'Keys'],
     isDownloaded: true
   },
   {
@@ -163,7 +164,7 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 182,
     artworkColor: '#D7A40D',
     stem: 'Drums',
-    stems: ['Drums', 'Piano', 'Bass'],
+    stems: ['Drums', 'Bass', 'Keys'],
     isDownloaded: true
   },
   {
@@ -175,7 +176,7 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 216,
     artworkColor: '#D33F74',
     stem: 'Drums',
-    stems: ['Drums', 'Piano', 'Bass'],
+    stems: ['Drums', 'Bass', 'Keys'],
     isDownloaded: true
   },
   {
@@ -187,7 +188,7 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 238,
     artworkColor: '#49A47A',
     stem: 'Drums',
-    stems: ['Drums', 'Piano', 'Bass'],
+    stems: ['Drums', 'Bass', 'Keys'],
     isDownloaded: true
   },
   {
@@ -199,7 +200,7 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 205,
     artworkColor: '#6B58D6',
     stem: 'Drums',
-    stems: ['Drums', 'Piano', 'Bass'],
+    stems: ['Drums', 'Bass', 'Keys'],
     isDownloaded: true
   }
 ];
@@ -281,7 +282,13 @@ export function FeisMinimalScreen({
     stopTrack,
     setPlaybackBpm,
     progress,
-    currentTime
+    currentTime,
+    stems,
+    soloedStemIds,
+    setStemVolume,
+    toggleStemMute,
+    toggleStemSolo,
+    resetStems
   } = usePlayer();
 
   const [selection, setSelection] = useState<PracticeSelection | null>(
@@ -294,13 +301,12 @@ export function FeisMinimalScreen({
   );
   const [showSelectionSheet, setShowSelectionSheet] = useState(false);
   const [showTimeSigPicker, setShowTimeSigPicker] = useState(false);
-  const [showStemPicker, setShowStemPicker] = useState(false);
+  const [showStemsMixer, setShowStemsMixer] = useState(false);
   const [showBeatSoundPicker, setShowBeatSoundPicker] = useState(false);
   const [selectionView, setSelectionView] = useState<SelectionView>('root');
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(
     null
   );
-  const [selectedStems, setSelectedStems] = useState<string[]>(['Drums']);
   const [sessionState, setSessionState] = useState<SessionState>('ready');
 
   const selectedPreset =
@@ -347,8 +353,15 @@ export function FeisMinimalScreen({
   const isSelectedTrackLoaded = currentTrack?.id === selectedTrack?.id;
   const selectedTrackProgress = isSelectedTrackLoaded ? progress : 0;
   const selectedTrackTime = isSelectedTrackLoaded ? currentTime : 0;
-  const selectedStemLabel =
-  selectedStems.length > 1 ? selectedStems.join(', ') : selectedStems[0] ?? 'Drums';
+  const activeStemCount = STEM_DEFS.filter(({ id }) =>
+  soloedStemIds.length > 0 ? soloedStemIds.includes(id) : !stems[id].muted
+  ).length;
+  const stemsSummaryLabel =
+  soloedStemIds.length > 0 ?
+  `${soloedStemIds.length} solo` :
+  activeStemCount < STEM_DEFS.length ?
+  `${activeStemCount}/${STEM_DEFS.length} active` :
+  'Drums, Bass, Keys';
   const metronomeBeatLabel =
   METRONOME_BEAT_OPTIONS.find((option) => option.value === sound)?.label ?? 'Woodchip';
   const isCustomTempo = hasSelection && defaultBpm > 0 && bpm !== defaultBpm;
@@ -388,7 +401,7 @@ export function FeisMinimalScreen({
       );
       setAccentFirstBeat(true);
       setIsMuted(false);
-      setSelectedStems([selectedTrack.stem]);
+      resetStems();
       setPlaybackBpm(selectedTrack.bpm);
     }
   }, [
@@ -416,7 +429,7 @@ export function FeisMinimalScreen({
   }, [showSelectionSheet]);
 
   useEffect(() => {
-    if (!selectedTrack) setShowStemPicker(false);
+    if (!selectedTrack) setShowStemsMixer(false);
   }, [selectedTrack]);
 
   useEffect(() => {
@@ -487,7 +500,7 @@ export function FeisMinimalScreen({
     if (isPlaying) stop();
     if (currentTrack) stopTrack();
     setSelection(null);
-    setSelectedStems(['Drums']);
+    resetStems();
     setIsMuted(false);
     setSessionState('ready');
   };
@@ -500,16 +513,6 @@ export function FeisMinimalScreen({
     });
     setSessionState('ready');
     setShowSelectionSheet(false);
-  };
-
-  const handleStemToggle = (stem: string) => {
-    setSelectedStems((prev) => {
-      if (prev.includes(stem)) {
-        const next = prev.filter((item) => item !== stem);
-        return next.length ? next : prev;
-      }
-      return [...prev, stem];
-    });
   };
 
   const handleTrackSelect = (track: DownloadedTrack) => {
@@ -628,15 +631,15 @@ export function FeisMinimalScreen({
           {selectedTrack &&
           <>
               <button
-              onClick={() => setShowStemPicker(true)}
+              onClick={() => setShowStemsMixer(true)}
               className="w-full h-[53px] px-4 flex items-center justify-between active:bg-neutral-50 focus:outline-none"
-              aria-label="Change track stem">
-              
+              aria-label="Open stems mixer">
+
                 <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
                   Track stems
                 </span>
                 <span className="flex items-center gap-1 text-[12px] leading-4 tracking-[0.5px]" style={{ color: TEXT_TERTIARY }}>
-                  {selectedStemLabel}
+                  {stemsSummaryLabel}
                   <ChevronRight size={16} style={{ color: ACCENT }} />
                 </span>
               </button>
@@ -914,35 +917,16 @@ export function FeisMinimalScreen({
       </AnimatePresence>
 
       <AnimatePresence>
-        {showStemPicker && selectedTrack &&
-        <PickerSheet
-          title="Track stems"
-          onClose={() => setShowStemPicker(false)}
-          closeIcon>
-          
-          <div className="px-4 py-3">
-            <div className="rounded-xl overflow-hidden bg-white">
-          {selectedTrack.stems.map((stem) => {
-            const isChecked = selectedStems.includes(stem);
-            return (
-              <button
-                key={stem}
-                onClick={() => handleStemToggle(stem)}
-                className="w-full h-[53px] px-4 flex items-center gap-4 text-left border-b last:border-b-0 active:bg-neutral-50 focus:outline-none"
-                style={{
-                  borderColor: BORDER
-                }}>
-                
-                <Checkbox checked={isChecked} />
-                <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
-                  {stem}
-                </span>
-              </button>);
+        {showStemsMixer && selectedTrack &&
+        <StemsMixerPanel
+          onClose={() => setShowStemsMixer(false)}
+          stems={stems}
+          soloedStemIds={soloedStemIds}
+          disabled={!hasSelection}
+          onVolumeChange={setStemVolume}
+          onToggleMute={toggleStemMute}
+          onToggleSolo={toggleStemSolo} />
 
-          })}
-            </div>
-          </div>
-        </PickerSheet>
         }
       </AnimatePresence>
 
@@ -1411,16 +1395,88 @@ function Radio({ checked }: {checked: boolean;}) {
 
 }
 
-function Checkbox({ checked }: {checked: boolean;}) {
+function StemsMixerPanel({
+  onClose,
+  stems,
+  soloedStemIds,
+  disabled,
+  onVolumeChange,
+  onToggleMute,
+  onToggleSolo
+}: {
+  onClose: () => void;
+  stems: Record<StemId, {volume: number;muted: boolean;}>;
+  soloedStemIds: StemId[];
+  disabled: boolean;
+  onVolumeChange: (stemId: StemId, volume: number) => void;
+  onToggleMute: (stemId: StemId) => void;
+  onToggleSolo: (stemId: StemId) => void;
+}) {
   return (
-    <span
-      className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 bg-white border"
-      style={{
-        borderColor: checked ? ACCENT : BORDER
-      }}>
-      
-      {checked && <Check size={12} strokeWidth={2.5} style={{ color: ACCENT }} />}
-    </span>);
+    <PickerSheet title="Stems mixer" onClose={onClose} closeIcon>
+      <div className="flex gap-3 overflow-x-auto px-4 py-4 snap-x snap-mandatory scrollbar-none">
+        {STEM_DEFS.map(({ id, label }) => {
+          const channel = stems[id];
+          const isSoloed = soloedStemIds.includes(id);
+          const isAudible = soloedStemIds.length > 0 ? isSoloed : !channel.muted;
+          return (
+            <div
+              key={id}
+              className="snap-center shrink-0 w-[104px] rounded-xl flex flex-col items-center py-4 gap-3 shadow-sm"
+              style={{
+                backgroundColor: CARD_BG,
+                opacity: disabled ? 0.45 : 1
+              }}>
+
+              <span className="text-[13px] font-semibold" style={{ color: TEXT_PRIMARY }}>
+                {label}
+              </span>
+              <VerticalFader
+                value={channel.volume}
+                onChange={(volume) => onVolumeChange(id, volume)}
+                disabled={disabled}
+                accentColor={ACCENT}
+                label={`${label} volume`}
+                height={150} />
+
+              <div className="flex flex-col gap-1.5 w-full px-2">
+                <button
+                  onClick={() => onToggleSolo(id)}
+                  disabled={disabled}
+                  aria-pressed={isSoloed}
+                  aria-label={`Solo ${label}`}
+                  className="h-7 rounded-md text-[11px] font-bold"
+                  style={{
+                    backgroundColor: isSoloed ? ACCENT : '#E6E1DE',
+                    color: isSoloed ? '#FFFFFF' : TEXT_SECONDARY
+                  }}>
+
+                  S
+                </button>
+                <button
+                  onClick={() => onToggleMute(id)}
+                  disabled={disabled}
+                  aria-pressed={channel.muted}
+                  aria-label={`Mute ${label}`}
+                  className="h-7 rounded-md text-[11px] font-bold"
+                  style={{
+                    backgroundColor: channel.muted ? ACCENT : '#E6E1DE',
+                    color: channel.muted ? '#FFFFFF' : TEXT_SECONDARY
+                  }}>
+
+                  M
+                </button>
+              </div>
+              {!isAudible &&
+              <span className="text-[10px]" style={{ color: TEXT_TERTIARY }}>
+                  Silent
+                </span>
+              }
+            </div>);
+
+        })}
+      </div>
+    </PickerSheet>);
 
 }
 

@@ -6,6 +6,25 @@ import React, {
   useContext } from
 'react';
 import { Track, TRACKS } from '../data/mockData';
+
+export type StemId = 'drums' | 'bass' | 'keys';
+export const STEM_DEFS: { id: StemId; label: string }[] = [
+  { id: 'drums', label: 'Drums' },
+  { id: 'bass', label: 'Bass' },
+  { id: 'keys', label: 'Keys' }
+];
+type StemChannelState = { volume: number; muted: boolean };
+type StemsState = Record<StemId, StemChannelState>;
+const DEFAULT_STEMS: StemsState = {
+  drums: { volume: 1, muted: false },
+  bass: { volume: 1, muted: false },
+  keys: { volume: 1, muted: false }
+};
+function isStemAudible(stemId: StemId, stems: StemsState, soloedStemIds: StemId[]) {
+  if (soloedStemIds.length > 0) return soloedStemIds.includes(stemId);
+  return !stems[stemId].muted;
+}
+
 type PlayerState = {
   currentTrack: Track | null;
   isPlaying: boolean;
@@ -16,6 +35,8 @@ type PlayerState = {
   loopStart: number; // 0 to 1
   loopEnd: number; // 0 to 1
   favorites: string[];
+  stems: StemsState;
+  soloedStemIds: StemId[];
 };
 type PlayerContextType = PlayerState & {
   playTrack: (track: Track) => void;
@@ -28,6 +49,10 @@ type PlayerContextType = PlayerState & {
   toggleLoop: () => void;
   setLoopPoints: (start: number, end: number) => void;
   toggleFavorite: (trackId: string) => void;
+  setStemVolume: (stemId: StemId, volume: number) => void;
+  toggleStemMute: (stemId: StemId) => void;
+  toggleStemSolo: (stemId: StemId) => void;
+  resetStems: () => void;
 };
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 export function PlayerProvider({ children }: {children: React.ReactNode;}) {
@@ -40,12 +65,23 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     isLooping: false,
     loopStart: 0,
     loopEnd: 1,
-    favorites: ['t1', 't5'] // Mock initial favorites
+    favorites: ['t1', 't5'], // Mock initial favorites
+    stems: DEFAULT_STEMS,
+    soloedStemIds: []
   });
   const progressInterval = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sampleIntervalRef = useRef<number | null>(null);
   const sampleBeatRef = useRef(0);
+  const stemsRef = useRef<StemsState>(DEFAULT_STEMS);
+  const soloedStemIdsRef = useRef<StemId[]>([]);
+
+  useEffect(() => {
+    stemsRef.current = state.stems;
+  }, [state.stems]);
+  useEffect(() => {
+    soloedStemIdsRef.current = state.soloedStemIds;
+  }, [state.soloedStemIds]);
 
   const getAudioContext = () => {
     if (!audioContextRef.current) {
@@ -111,19 +147,28 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     const beatDuration = 60 / playbackBpm;
     const root = 146.83;
     const fifth = 220;
+    const stems = stemsRef.current;
+    const soloed = soloedStemIdsRef.current;
 
-    if (beat % 4 === 0) {
-      playPulse(context, 72, startTime, 0.18, 0.18, 'sine');
-      playPulse(context, root, startTime, beatDuration * 0.8, 0.045, 'triangle');
-    } else if (beat % 4 === 2) {
-      playPulse(context, 96, startTime, 0.12, 0.12, 'sine');
-      playNoise(context, startTime, 0.12, 0.035);
-      playPulse(context, fifth, startTime, beatDuration * 0.6, 0.035, 'triangle');
-    } else {
-      playPulse(context, 880, startTime, 0.045, 0.025, 'square');
+    if (isStemAudible('drums', stems, soloed)) {
+      const v = stems.drums.volume;
+      if (beat % 4 === 0) {
+        playPulse(context, 72, startTime, 0.18, 0.18 * v, 'sine');
+      } else if (beat % 4 === 2) {
+        playPulse(context, 96, startTime, 0.12, 0.12 * v, 'sine');
+        playNoise(context, startTime, 0.12, 0.035 * v);
+      } else {
+        playPulse(context, 880, startTime, 0.045, 0.025 * v, 'square');
+      }
+      playPulse(context, 1320, startTime + beatDuration / 2, 0.035, 0.018 * v, 'square');
     }
 
-    playPulse(context, 1320, startTime + beatDuration / 2, 0.035, 0.018, 'square');
+    if (beat % 4 === 0 && isStemAudible('bass', stems, soloed)) {
+      playPulse(context, root, startTime, beatDuration * 0.8, 0.045 * stems.bass.volume, 'triangle');
+    } else if (beat % 4 === 2 && isStemAudible('keys', stems, soloed)) {
+      playPulse(context, fifth, startTime, beatDuration * 0.6, 0.035 * stems.keys.volume, 'triangle');
+    }
+
     sampleBeatRef.current = beat + 1;
   };
 
@@ -301,6 +346,40 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       [...prev.favorites, trackId]
     }));
   };
+  const setStemVolume = (stemId: StemId, volume: number) => {
+    const clamped = Math.max(0, Math.min(1, volume));
+    setState((prev) => ({
+      ...prev,
+      stems: {
+        ...prev.stems,
+        [stemId]: { ...prev.stems[stemId], volume: clamped }
+      }
+    }));
+  };
+  const toggleStemMute = (stemId: StemId) => {
+    setState((prev) => ({
+      ...prev,
+      stems: {
+        ...prev.stems,
+        [stemId]: { ...prev.stems[stemId], muted: !prev.stems[stemId].muted }
+      }
+    }));
+  };
+  const toggleStemSolo = (stemId: StemId) => {
+    setState((prev) => ({
+      ...prev,
+      soloedStemIds: prev.soloedStemIds.includes(stemId) ?
+      prev.soloedStemIds.filter((id) => id !== stemId) :
+      [...prev.soloedStemIds, stemId]
+    }));
+  };
+  const resetStems = () => {
+    setState((prev) => ({
+      ...prev,
+      stems: DEFAULT_STEMS,
+      soloedStemIds: []
+    }));
+  };
   return (
     <PlayerContext.Provider
       value={{
@@ -314,7 +393,11 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
         skipBackward,
         toggleLoop,
         setLoopPoints,
-        toggleFavorite
+        toggleFavorite,
+        setStemVolume,
+        toggleStemMute,
+        toggleStemSolo,
+        resetStems
       }}>
       
       {children}
