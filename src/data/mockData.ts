@@ -8,6 +8,8 @@ export type DanceStyle = {
   color: string;
 };
 
+export type StemId = 'drums' | 'bass' | 'keys';
+
 export type Track = {
   id: string;
   title: string;
@@ -16,7 +18,9 @@ export type Track = {
   bpm: number;
   duration: number; // in seconds
   artworkColor: string;
-  audioUrl?: string; // real audio file; falls back to synthesized playback when absent
+  // Real audio per stem; falls back to synthesized playback when absent.
+  // A track only sounds through real audio once every stem has a file.
+  stemAudioUrls?: Partial<Record<StemId, string>>;
 };
 
 export type Playlist = {

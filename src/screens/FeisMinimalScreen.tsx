@@ -12,10 +12,10 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { MetronomeSound, useMetronome } from '../hooks/useMetronome';
-import { StemId, STEM_DEFS, usePlayer } from '../context/PlayerContext';
+import { STEM_DEFS, usePlayer } from '../context/PlayerContext';
 import { RotaryDial } from '../components/RotaryDial';
 import { VerticalFader } from '../components/VerticalFader';
-import { DANCE_STYLES, Track } from '../data/mockData';
+import { DANCE_STYLES, StemId, Track } from '../data/mockData';
 
 interface FeisMinimalScreenProps {
   onClose?: () => void;
@@ -211,10 +211,14 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     bpm: 113,
     duration: 34,
     artworkColor: '#2A9D8F',
-    stem: 'Full Mix',
-    stems: [],
+    stem: 'Drums',
+    stems: ['Drums', 'Bass', 'Keys'],
     isDownloaded: true,
-    audioUrl: '/audio/demo-reel.wav'
+    stemAudioUrls: {
+      drums: '/audio/demo-reel-drums.wav',
+      bass: '/audio/demo-reel-bass.wav',
+      keys: '/audio/demo-reel-keys.wav'
+    }
   }
 ];
 

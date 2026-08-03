@@ -5,9 +5,8 @@ import React, {
   createContext,
   useContext } from
 'react';
-import { Track, TRACKS } from '../data/mockData';
+import { StemId, Track, TRACKS } from '../data/mockData';
 
-export type StemId = 'drums' | 'bass' | 'keys';
 export const STEM_DEFS: { id: StemId; label: string }[] = [
   { id: 'drums', label: 'Drums' },
   { id: 'bass', label: 'Bass' },
@@ -76,7 +75,9 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   const stemsRef = useRef<StemsState>(DEFAULT_STEMS);
   const soloedStemIdsRef = useRef<StemId[]>([]);
   const audioBufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
-  const realSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const realStemSourcesRef = useRef<
+    Partial<Record<StemId, { source: AudioBufferSourceNode; gain: GainNode }>>>(
+  {});
   const realStartContextTimeRef = useRef<number | null>(null);
   const realStartOffsetRef = useRef(0);
 
@@ -86,6 +87,18 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   useEffect(() => {
     soloedStemIdsRef.current = state.soloedStemIds;
   }, [state.soloedStemIds]);
+
+  // Keep any currently-playing real stem audio in sync with mixer changes,
+  // so the same stems mixer UI that gates the synthesized layers also
+  // controls real gain nodes when the current track has real audio.
+  useEffect(() => {
+    STEM_DEFS.forEach(({ id }) => {
+      const entry = realStemSourcesRef.current[id];
+      if (!entry) return;
+      const audible = isStemAudible(id, state.stems, state.soloedStemIds);
+      entry.gain.gain.value = audible ? state.stems[id].volume : 0;
+    });
+  }, [state.stems, state.soloedStemIds]);
 
   const getAudioContext = () => {
     if (!audioContextRef.current) {
@@ -211,24 +224,25 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
 
   const stopRealAudioPlayback = () => {
     const context = audioContextRef.current;
-    const source = realSourceRef.current;
-    if (source && context && realStartContextTimeRef.current !== null) {
-      const rate = source.playbackRate.value;
+    const entries = Object.values(realStemSourcesRef.current);
+    const anyEntry = entries[0];
+    if (anyEntry && context && realStartContextTimeRef.current !== null) {
+      const rate = anyEntry.source.playbackRate.value;
       const elapsed = (context.currentTime - realStartContextTimeRef.current) * rate;
-      const bufferDuration = source.buffer?.duration ?? 0;
+      const bufferDuration = anyEntry.source.buffer?.duration ?? 0;
       realStartOffsetRef.current = bufferDuration > 0 ?
       (realStartOffsetRef.current + elapsed) % bufferDuration :
       0;
     }
-    if (source) {
+    entries.forEach(({ source }) => {
       try {
         source.stop();
       } catch {
         // already stopped
       }
       source.disconnect();
-    }
-    realSourceRef.current = null;
+    });
+    realStemSourcesRef.current = {};
     realStartContextTimeRef.current = null;
   };
 
@@ -237,28 +251,48 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     resetOffset = false,
     playbackBpm = track.bpm
   ) => {
+    const stemUrls = track.stemAudioUrls;
+    if (!stemUrls) return;
     const context = await unlockAudioContext();
-    if (!context || !track.audioUrl) return;
+    if (!context) return;
 
-    let buffer: AudioBuffer;
+    let buffers: Partial<Record<StemId, AudioBuffer>>;
     try {
-      buffer = await loadAudioBuffer(context, track.audioUrl);
+      const entries = await Promise.all(
+        STEM_DEFS.map(async ({ id }) => {
+          const url = stemUrls[id];
+          if (!url) return null;
+          return [id, await loadAudioBuffer(context, url)] as const;
+        })
+      );
+      buffers = Object.fromEntries(entries.filter((e): e is NonNullable<typeof e> => e !== null));
     } catch {
       return;
     }
+    if (Object.keys(buffers).length === 0) return;
 
     stopRealAudioPlayback();
     if (resetOffset) realStartOffsetRef.current = 0;
 
-    const source = context.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-    source.playbackRate.value = playbackBpm / track.bpm;
-    source.connect(context.destination);
+    const stems = stemsRef.current;
+    const soloed = soloedStemIdsRef.current;
+    const referenceBuffer = Object.values(buffers)[0] as AudioBuffer;
+    const offset = realStartOffsetRef.current % referenceBuffer.duration;
 
-    const offset = realStartOffsetRef.current % buffer.duration;
-    source.start(0, offset);
-    realSourceRef.current = source;
+    STEM_DEFS.forEach(({ id }) => {
+      const buffer = buffers[id];
+      if (!buffer) return;
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      source.playbackRate.value = playbackBpm / track.bpm;
+      const gain = context.createGain();
+      gain.gain.value = isStemAudible(id, stems, soloed) ? stems[id].volume : 0;
+      source.connect(gain);
+      gain.connect(context.destination);
+      source.start(0, offset);
+      realStemSourcesRef.current[id] = { source, gain };
+    });
     realStartContextTimeRef.current = context.currentTime;
   };
 
@@ -269,7 +303,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   ) => {
     stopSamplePlayback();
     stopRealAudioPlayback();
-    if (track.audioUrl) {
+    if (track.stemAudioUrls) {
       await startRealAudioPlayback(track, resetPosition, playbackBpm);
     } else {
       await startSamplePlayback(track, resetPosition, playbackBpm);
@@ -371,9 +405,12 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   const setPlaybackBpm = (bpm: number | null) => {
     setState((prev) => {
       if (prev.isPlaying && prev.currentTrack && bpm) {
-        if (prev.currentTrack.audioUrl && realSourceRef.current) {
-          realSourceRef.current.playbackRate.value = bpm / prev.currentTrack.bpm;
-        } else if (!prev.currentTrack.audioUrl) {
+        if (prev.currentTrack.stemAudioUrls) {
+          const rate = bpm / prev.currentTrack.bpm;
+          Object.values(realStemSourcesRef.current).forEach(({ source }) => {
+            source.playbackRate.value = rate;
+          });
+        } else {
           void startSamplePlayback(prev.currentTrack, false, bpm);
         }
       }
@@ -386,7 +423,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   const seek = (progress: number) => {
     sampleBeatRef.current = 0;
     const track = state.currentTrack;
-    if (track?.audioUrl) {
+    if (track?.stemAudioUrls) {
       realStartOffsetRef.current = progress * track.duration;
       if (state.isPlaying) {
         void startRealAudioPlayback(track, false, state.playbackBpm ?? track.bpm);
