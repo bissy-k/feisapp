@@ -75,6 +75,10 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   const sampleBeatRef = useRef(0);
   const stemsRef = useRef<StemsState>(DEFAULT_STEMS);
   const soloedStemIdsRef = useRef<StemId[]>([]);
+  const audioBufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
+  const realSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const realStartContextTimeRef = useRef<number | null>(null);
+  const realStartOffsetRef = useRef(0);
 
   useEffect(() => {
     stemsRef.current = state.stems;
@@ -195,6 +199,88 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     }, 60 / playbackBpm * 1000);
   };
 
+  const loadAudioBuffer = async (context: AudioContext, url: string) => {
+    const cached = audioBufferCacheRef.current.get(url);
+    if (cached) return cached;
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const decoded = await context.decodeAudioData(arrayBuffer);
+    audioBufferCacheRef.current.set(url, decoded);
+    return decoded;
+  };
+
+  const stopRealAudioPlayback = () => {
+    const context = audioContextRef.current;
+    const source = realSourceRef.current;
+    if (source && context && realStartContextTimeRef.current !== null) {
+      const rate = source.playbackRate.value;
+      const elapsed = (context.currentTime - realStartContextTimeRef.current) * rate;
+      const bufferDuration = source.buffer?.duration ?? 0;
+      realStartOffsetRef.current = bufferDuration > 0 ?
+      (realStartOffsetRef.current + elapsed) % bufferDuration :
+      0;
+    }
+    if (source) {
+      try {
+        source.stop();
+      } catch {
+        // already stopped
+      }
+      source.disconnect();
+    }
+    realSourceRef.current = null;
+    realStartContextTimeRef.current = null;
+  };
+
+  const startRealAudioPlayback = async (
+    track: Track,
+    resetOffset = false,
+    playbackBpm = track.bpm
+  ) => {
+    const context = await unlockAudioContext();
+    if (!context || !track.audioUrl) return;
+
+    let buffer: AudioBuffer;
+    try {
+      buffer = await loadAudioBuffer(context, track.audioUrl);
+    } catch {
+      return;
+    }
+
+    stopRealAudioPlayback();
+    if (resetOffset) realStartOffsetRef.current = 0;
+
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.playbackRate.value = playbackBpm / track.bpm;
+    source.connect(context.destination);
+
+    const offset = realStartOffsetRef.current % buffer.duration;
+    source.start(0, offset);
+    realSourceRef.current = source;
+    realStartContextTimeRef.current = context.currentTime;
+  };
+
+  const startTrackPlayback = async (
+    track: Track,
+    resetPosition = false,
+    playbackBpm = track.bpm
+  ) => {
+    stopSamplePlayback();
+    stopRealAudioPlayback();
+    if (track.audioUrl) {
+      await startRealAudioPlayback(track, resetPosition, playbackBpm);
+    } else {
+      await startSamplePlayback(track, resetPosition, playbackBpm);
+    }
+  };
+
+  const stopTrackPlayback = () => {
+    stopSamplePlayback();
+    stopRealAudioPlayback();
+  };
+
   useEffect(() => {
     if (state.isPlaying && state.currentTrack) {
       progressInterval.current = window.setInterval(() => {
@@ -207,7 +293,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
           if (prev.isLooping && newProgress >= prev.loopEnd) {
             newProgress = prev.loopStart;
           } else if (newProgress >= 1) {
-            stopSamplePlayback();
+            stopTrackPlayback();
             return {
               ...prev,
               isPlaying: false,
@@ -232,14 +318,14 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
 
   useEffect(() => {
     return () => {
-      stopSamplePlayback();
+      stopTrackPlayback();
       void audioContextRef.current?.close();
     };
   }, []);
 
   const playTrack = async (track: Track) => {
     const playbackBpm = state.playbackBpm ?? track.bpm;
-    await startSamplePlayback(track, true, playbackBpm);
+    await startTrackPlayback(track, true, playbackBpm);
     setState((prev) => ({
       ...prev,
       currentTrack: track,
@@ -254,13 +340,13 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
 
     if (state.currentTrack) {
       if (nextIsPlaying) {
-        await startSamplePlayback(
+        await startTrackPlayback(
           state.currentTrack,
           false,
           state.playbackBpm ?? state.currentTrack.bpm
         );
       } else {
-        stopSamplePlayback();
+        stopTrackPlayback();
       }
     }
 
@@ -272,7 +358,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     });
   };
   const stopTrack = () => {
-    stopSamplePlayback();
+    stopTrackPlayback();
     setState((prev) => ({
       ...prev,
       currentTrack: null,
@@ -285,7 +371,11 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   const setPlaybackBpm = (bpm: number | null) => {
     setState((prev) => {
       if (prev.isPlaying && prev.currentTrack && bpm) {
-        void startSamplePlayback(prev.currentTrack, false, bpm);
+        if (prev.currentTrack.audioUrl && realSourceRef.current) {
+          realSourceRef.current.playbackRate.value = bpm / prev.currentTrack.bpm;
+        } else if (!prev.currentTrack.audioUrl) {
+          void startSamplePlayback(prev.currentTrack, false, bpm);
+        }
       }
       return {
         ...prev,
@@ -295,6 +385,13 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   };
   const seek = (progress: number) => {
     sampleBeatRef.current = 0;
+    const track = state.currentTrack;
+    if (track?.audioUrl) {
+      realStartOffsetRef.current = progress * track.duration;
+      if (state.isPlaying) {
+        void startRealAudioPlayback(track, false, state.playbackBpm ?? track.bpm);
+      }
+    }
     setState((prev) => ({
       ...prev,
       progress,

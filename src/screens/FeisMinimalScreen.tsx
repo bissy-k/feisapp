@@ -202,6 +202,19 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     stem: 'Drums',
     stems: ['Drums', 'Bass', 'Keys'],
     isDownloaded: true
+  },
+  {
+    id: 'd7',
+    title: 'Sample Reel (Real Audio)',
+    artist: 'Original Demo Composition',
+    styleId: 'reel',
+    bpm: 113,
+    duration: 34,
+    artworkColor: '#2A9D8F',
+    stem: 'Full Mix',
+    stems: [],
+    isDownloaded: true,
+    audioUrl: '/audio/demo-reel.wav'
   }
 ];
 
@@ -211,7 +224,7 @@ const DOWNLOADED_PLAYLISTS: DownloadedPlaylist[] = [
     name: 'Downloaded Tracks',
     count: 31,
     coverColor: '#D9D9D9',
-    trackIds: ['d1', 'd2', 'd3', 'd4', 'd5', 'd6']
+    trackIds: ['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']
   },
   {
     id: 'favourites',
@@ -628,7 +641,7 @@ export function FeisMinimalScreen({
           backgroundColor: CARD_BG
           }}>
           
-          {selectedTrack &&
+          {selectedTrack && selectedTrack.stems.length > 0 &&
           <>
               <button
               onClick={() => setShowStemsMixer(true)}
@@ -917,7 +930,7 @@ export function FeisMinimalScreen({
       </AnimatePresence>
 
       <AnimatePresence>
-        {showStemsMixer && selectedTrack &&
+        {showStemsMixer && selectedTrack && selectedTrack.stems.length > 0 &&
         <StemsMixerPanel
           onClose={() => setShowStemsMixer(false)}
           stems={stems}

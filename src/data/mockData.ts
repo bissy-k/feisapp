@@ -16,6 +16,7 @@ export type Track = {
   bpm: number;
   duration: number; // in seconds
   artworkColor: string;
+  audioUrl?: string; // real audio file; falls back to synthesized playback when absent
 };
 
 export type Playlist = {
