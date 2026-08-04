@@ -19,8 +19,8 @@ const DEFAULT_STEMS: StemsState = {
   bass: { volume: 1, muted: false },
   keys: { volume: 1, muted: false }
 };
-function isStemAudible(stemId: StemId, stems: StemsState, soloedStemIds: StemId[]) {
-  if (soloedStemIds.length > 0) return soloedStemIds.includes(stemId);
+function isStemAudible(stemId: StemId, stems: StemsState, soloedStemId: StemId | null) {
+  if (soloedStemId) return stemId === soloedStemId;
   return !stems[stemId].muted;
 }
 
@@ -35,7 +35,7 @@ type PlayerState = {
   loopEnd: number; // 0 to 1
   favorites: string[];
   stems: StemsState;
-  soloedStemIds: StemId[];
+  soloedStemId: StemId | null;
 };
 type PlayerContextType = PlayerState & {
   playTrack: (track: Track) => void;
@@ -66,14 +66,14 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     loopEnd: 1,
     favorites: ['t1', 't5'], // Mock initial favorites
     stems: DEFAULT_STEMS,
-    soloedStemIds: []
+    soloedStemId: null
   });
   const progressInterval = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sampleIntervalRef = useRef<number | null>(null);
   const sampleBeatRef = useRef(0);
   const stemsRef = useRef<StemsState>(DEFAULT_STEMS);
-  const soloedStemIdsRef = useRef<StemId[]>([]);
+  const soloedStemIdRef = useRef<StemId | null>(null);
   const audioBufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
   const realStemSourcesRef = useRef<
     Partial<Record<StemId, { source: AudioBufferSourceNode; gain: GainNode }>>>(
@@ -85,8 +85,8 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     stemsRef.current = state.stems;
   }, [state.stems]);
   useEffect(() => {
-    soloedStemIdsRef.current = state.soloedStemIds;
-  }, [state.soloedStemIds]);
+    soloedStemIdRef.current = state.soloedStemId;
+  }, [state.soloedStemId]);
 
   // Keep any currently-playing real stem audio in sync with mixer changes,
   // so the same stems mixer UI that gates the synthesized layers also
@@ -95,10 +95,10 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     STEM_DEFS.forEach(({ id }) => {
       const entry = realStemSourcesRef.current[id];
       if (!entry) return;
-      const audible = isStemAudible(id, state.stems, state.soloedStemIds);
+      const audible = isStemAudible(id, state.stems, state.soloedStemId);
       entry.gain.gain.value = audible ? state.stems[id].volume : 0;
     });
-  }, [state.stems, state.soloedStemIds]);
+  }, [state.stems, state.soloedStemId]);
 
   const getAudioContext = () => {
     if (!audioContextRef.current) {
@@ -165,7 +165,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     const root = 146.83;
     const fifth = 220;
     const stems = stemsRef.current;
-    const soloed = soloedStemIdsRef.current;
+    const soloed = soloedStemIdRef.current;
 
     if (isStemAudible('drums', stems, soloed)) {
       const v = stems.drums.volume;
@@ -275,7 +275,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     if (resetOffset) realStartOffsetRef.current = 0;
 
     const stems = stemsRef.current;
-    const soloed = soloedStemIdsRef.current;
+    const soloed = soloedStemIdRef.current;
     const referenceBuffer = Object.values(buffers)[0] as AudioBuffer;
     const offset = realStartOffsetRef.current % referenceBuffer.duration;
 
@@ -502,16 +502,17 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   const toggleStemSolo = (stemId: StemId) => {
     setState((prev) => ({
       ...prev,
-      soloedStemIds: prev.soloedStemIds.includes(stemId) ?
-      prev.soloedStemIds.filter((id) => id !== stemId) :
-      [...prev.soloedStemIds, stemId]
+      // Only one stem can be soloed at a time. Soloing never touches any
+      // stem's own `muted` flag — it's a temporary override on top, so
+      // releasing solo reveals whatever each stem's mute state already was.
+      soloedStemId: prev.soloedStemId === stemId ? null : stemId
     }));
   };
   const resetStems = () => {
     setState((prev) => ({
       ...prev,
       stems: DEFAULT_STEMS,
-      soloedStemIds: []
+      soloedStemId: null
     }));
   };
   return (

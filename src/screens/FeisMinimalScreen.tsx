@@ -5,6 +5,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Music2,
+  Pause,
+  Play,
   Plus,
   Volume1,
   Volume2,
@@ -15,6 +17,7 @@ import { MetronomeSound, useMetronome } from '../hooks/useMetronome';
 import { STEM_DEFS, usePlayer } from '../context/PlayerContext';
 import { RotaryDial } from '../components/RotaryDial';
 import { VerticalFader } from '../components/VerticalFader';
+import { TrackScrubber } from '../components/TrackScrubber';
 import { DANCE_STYLES, StemId, Track } from '../data/mockData';
 
 interface FeisMinimalScreenProps {
@@ -302,7 +305,7 @@ export function FeisMinimalScreen({
     currentTime,
     seek,
     stems,
-    soloedStemIds,
+    soloedStemId,
     setStemVolume,
     toggleStemMute,
     toggleStemSolo,
@@ -372,11 +375,11 @@ export function FeisMinimalScreen({
   const selectedTrackProgress = isSelectedTrackLoaded ? progress : 0;
   const selectedTrackTime = isSelectedTrackLoaded ? currentTime : 0;
   const activeStemCount = STEM_DEFS.filter(({ id }) =>
-  soloedStemIds.length > 0 ? soloedStemIds.includes(id) : !stems[id].muted
+  soloedStemId ? id === soloedStemId : !stems[id].muted
   ).length;
   const stemsSummaryLabel =
-  soloedStemIds.length > 0 ?
-  `${soloedStemIds.length} solo` :
+  soloedStemId ?
+  `${STEM_DEFS.find(({ id }) => id === soloedStemId)?.label} solo` :
   activeStemCount < STEM_DEFS.length ?
   `${activeStemCount}/${STEM_DEFS.length} active` :
   'Drums, Bass, Keys';
@@ -940,11 +943,17 @@ export function FeisMinimalScreen({
         <StemsMixerPanel
           onClose={() => setShowStemsMixer(false)}
           stems={stems}
-          soloedStemIds={soloedStemIds}
+          soloedStemId={soloedStemId}
           disabled={!hasSelection}
           onVolumeChange={setStemVolume}
           onToggleMute={toggleStemMute}
-          onToggleSolo={toggleStemSolo} />
+          onToggleSolo={toggleStemSolo}
+          isPlaying={sessionState === 'running'}
+          onTogglePlayPause={handlePrimaryAction}
+          progress={selectedTrackProgress}
+          currentTime={selectedTrackTime}
+          duration={selectedTrack.duration}
+          onSeek={isSelectedTrackLoaded ? seek : undefined} />
 
         }
       </AnimatePresence>
@@ -1495,31 +1504,68 @@ function Radio({ checked }: {checked: boolean;}) {
 function StemsMixerPanel({
   onClose,
   stems,
-  soloedStemIds,
+  soloedStemId,
   disabled,
   onVolumeChange,
   onToggleMute,
-  onToggleSolo
+  onToggleSolo,
+  isPlaying,
+  onTogglePlayPause,
+  progress,
+  currentTime,
+  duration,
+  onSeek
 }: {
   onClose: () => void;
   stems: Record<StemId, {volume: number;muted: boolean;}>;
-  soloedStemIds: StemId[];
+  soloedStemId: StemId | null;
   disabled: boolean;
   onVolumeChange: (stemId: StemId, volume: number) => void;
   onToggleMute: (stemId: StemId) => void;
   onToggleSolo: (stemId: StemId) => void;
+  isPlaying: boolean;
+  onTogglePlayPause: () => void;
+  progress: number;
+  currentTime: number;
+  duration: number;
+  onSeek?: (progress: number) => void;
 }) {
   return (
     <PickerSheet title="Stems mixer" onClose={onClose} closeIcon>
-      <div className="flex gap-2.5 overflow-x-auto px-4 pt-2 pb-5 snap-x snap-mandatory scrollbar-none">
+      <div
+        className="flex items-center gap-3 px-4 pb-3 mb-1 border-b"
+        style={{ borderColor: BORDER, opacity: disabled ? 0.45 : 1 }}>
+
+        <button
+          onClick={onTogglePlayPause}
+          disabled={disabled}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          className="w-9 h-9 rounded-full flex items-center justify-center text-white flex-shrink-0 active:scale-95 transition-transform"
+          style={{ backgroundColor: ACCENT }}>
+
+          {isPlaying ?
+          <Pause size={16} fill="currentColor" /> :
+
+          <Play size={16} fill="currentColor" className="ml-0.5" />
+          }
+        </button>
+        <span className="w-8 text-right text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
+          {formatTime(currentTime)}
+        </span>
+        <TrackScrubber progress={progress} onSeek={onSeek} accentColor={ACCENT} />
+        <span className="w-8 text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
+          {formatTime(duration)}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-2.5 px-4 pt-2 pb-5">
         {STEM_DEFS.map(({ id, label }) => {
           const channel = stems[id];
-          const isSoloed = soloedStemIds.includes(id);
-          const isAudible = soloedStemIds.length > 0 ? isSoloed : !channel.muted;
+          const isSoloed = soloedStemId === id;
+          const isAudible = soloedStemId ? isSoloed : !channel.muted;
           return (
             <div
               key={id}
-              className="snap-center shrink-0 w-[92px] rounded-2xl flex flex-col items-center pt-4 pb-3 px-2 shadow-sm"
+              className="w-full rounded-2xl flex flex-col items-center pt-4 pb-3 px-2 shadow-sm"
               style={{
                 backgroundColor: CARD_BG,
                 opacity: disabled ? 0.45 : 1
@@ -1550,7 +1596,7 @@ function StemsMixerPanel({
                     color: isSoloed ? '#FFFFFF' : TEXT_SECONDARY
                   }}>
 
-                  S
+                  Solo
                 </button>
                 <button
                   onClick={() => onToggleMute(id)}
@@ -1563,7 +1609,7 @@ function StemsMixerPanel({
                     color: channel.muted ? '#FFFFFF' : TEXT_SECONDARY
                   }}>
 
-                  M
+                  Mute
                 </button>
               </div>
               <span className="mt-2 text-[10px] leading-3 h-3" style={{ color: TEXT_TERTIARY }}>
