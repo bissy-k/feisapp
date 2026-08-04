@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   ChevronDown,
@@ -300,6 +300,7 @@ export function FeisMinimalScreen({
     setPlaybackBpm,
     progress,
     currentTime,
+    seek,
     stems,
     soloedStemIds,
     setStemVolume,
@@ -589,7 +590,8 @@ export function FeisMinimalScreen({
           progress={selectedTrackProgress}
           currentTime={selectedTrackTime}
           sessionState={sessionState}
-          onOpen={() => setShowSelectionSheet(true)} />
+          onOpen={() => setShowSelectionSheet(true)}
+          onSeek={isSelectedTrackLoaded ? seek : undefined} />
 
         {hasSelection &&
         <>
@@ -1019,7 +1021,8 @@ function PracticeSelectionCard({
   progress,
   currentTime,
   sessionState,
-  onOpen
+  onOpen,
+  onSeek
 }: {
   preset: PracticePreset | null | undefined;
   track: DownloadedTrack | null | undefined;
@@ -1027,8 +1030,59 @@ function PracticeSelectionCard({
   currentTime: number;
   sessionState: SessionState;
   onOpen: () => void;
+  onSeek?: (progress: number) => void;
 }) {
   const shouldReduceMotion = useReducedMotion();
+  const scrubTrackRef = useRef<HTMLDivElement>(null);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [scrubProgress, setScrubProgress] = useState(progress);
+
+  useEffect(() => {
+    if (!isScrubbing) setScrubProgress(progress);
+  }, [progress, isScrubbing]);
+
+  const updateScrubFromClientX = (clientX: number) => {
+    if (!scrubTrackRef.current) return;
+    const rect = scrubTrackRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+    setScrubProgress(rect.width > 0 ? x / rect.width : 0);
+  };
+  const handleScrubPointerDown = (event: React.PointerEvent) => {
+    if (!onSeek) return;
+    setIsScrubbing(true);
+    updateScrubFromClientX(event.clientX);
+    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+  };
+  const handleScrubPointerMove = (event: React.PointerEvent) => {
+    if (isScrubbing) updateScrubFromClientX(event.clientX);
+  };
+  const handleScrubPointerUp = (event: React.PointerEvent) => {
+    if (isScrubbing) {
+      setIsScrubbing(false);
+      onSeek?.(scrubProgress);
+      (event.target as HTMLElement).releasePointerCapture(event.pointerId);
+    }
+  };
+  const handleScrubKeyDown = (event: React.KeyboardEvent, duration: number) => {
+    if (!onSeek || duration <= 0) return;
+    const step = 5 / duration;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      onSeek(Math.max(0, scrubProgress - step));
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      onSeek(Math.min(1, scrubProgress + step));
+    }
+    if (event.key === 'Home') {
+      event.preventDefault();
+      onSeek(0);
+    }
+    if (event.key === 'End') {
+      event.preventDefault();
+      onSeek(1);
+    }
+  };
 
   if (!preset && !track) {
     return (
@@ -1125,15 +1179,41 @@ function PracticeSelectionCard({
       </button>
       <div className="mt-[7px] flex items-center gap-[3px]">
         <span className="w-[30px] text-right text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
-            {formatTime(currentTime)}
+            {formatTime(isScrubbing ? scrubProgress * selectedTrack.duration : currentTime)}
         </span>
-        <div className="h-[5px] flex-1 rounded-r overflow-hidden" style={{ backgroundColor: '#F8E1DB' }}>
+        <div
+          ref={scrubTrackRef}
+          onPointerDown={handleScrubPointerDown}
+          onPointerMove={handleScrubPointerMove}
+          onPointerUp={handleScrubPointerUp}
+          onPointerCancel={handleScrubPointerUp}
+          onKeyDown={(event) => handleScrubKeyDown(event, selectedTrack.duration)}
+          role={onSeek ? 'slider' : undefined}
+          tabIndex={onSeek ? 0 : undefined}
+          aria-orientation={onSeek ? 'horizontal' : undefined}
+          aria-valuemin={onSeek ? 0 : undefined}
+          aria-valuemax={onSeek ? selectedTrack.duration : undefined}
+          aria-valuenow={onSeek ? Math.round(scrubProgress * selectedTrack.duration) : undefined}
+          aria-label={onSeek ? 'Seek' : undefined}
+          className={`relative flex-1 h-6 flex items-center ${onSeek ? 'cursor-pointer touch-none' : ''}`}>
+
+          <div className="w-full h-[5px] rounded-r overflow-hidden" style={{ backgroundColor: '#F8E1DB' }}>
+            <div
+              className={`h-full rounded ${isScrubbing ? '' : 'transition-all duration-100 ease-linear'}`}
+              style={{
+                width: `${Math.max(2, Math.min(Math.max(scrubProgress, 0), 1) * 100)}%`,
+                backgroundColor: ACCENT
+              }} />
+          </div>
+          {onSeek &&
           <div
-            className="h-full rounded transition-all duration-100 ease-linear"
+            className={`absolute top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-white transition-transform ${isScrubbing ? 'scale-125' : ''}`}
             style={{
-              width: `${Math.max(2, Math.min(Math.max(progress, 0), 1) * 100)}%`,
-              backgroundColor: ACCENT
+              left: `calc(${Math.min(Math.max(scrubProgress, 0), 1) * 100}% - 5px)`,
+              border: `1.5px solid ${ACCENT}`,
+              boxShadow: '0 1px 3px rgba(80, 56, 49, 0.3)'
             }} />
+          }
         </div>
         <span className="w-[30px] text-right text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
           {formatTime(selectedTrack.duration)}
