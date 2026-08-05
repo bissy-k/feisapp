@@ -491,22 +491,40 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     }));
   };
   const toggleStemMute = (stemId: StemId) => {
-    setState((prev) => ({
-      ...prev,
-      stems: {
-        ...prev.stems,
-        [stemId]: { ...prev.stems[stemId], muted: !prev.stems[stemId].muted }
-      }
-    }));
+    setState((prev) => {
+      // Solo and Mute are mutually exclusive per stem: a stem is either
+      // Default, Muted, or Soloed, never Muted-and-Soloed at once. If this
+      // stem is currently the soloed one, Mute takes over from Solo instead
+      // of layering on top of it.
+      const wasSoloed = prev.soloedStemId === stemId;
+      return {
+        ...prev,
+        soloedStemId: wasSoloed ? null : prev.soloedStemId,
+        stems: {
+          ...prev.stems,
+          [stemId]: {
+            ...prev.stems[stemId],
+            muted: wasSoloed ? true : !prev.stems[stemId].muted
+          }
+        }
+      };
+    });
   };
   const toggleStemSolo = (stemId: StemId) => {
-    setState((prev) => ({
-      ...prev,
-      // Only one stem can be soloed at a time. Soloing never touches any
-      // stem's own `muted` flag — it's a temporary override on top, so
-      // releasing solo reveals whatever each stem's mute state already was.
-      soloedStemId: prev.soloedStemId === stemId ? null : stemId
-    }));
+    setState((prev) => {
+      const isAlreadySoloed = prev.soloedStemId === stemId;
+      // Only one stem can be soloed at a time. Soloing a stem clears that
+      // same stem's own `muted` flag (mutual exclusivity, same as above) but
+      // never touches any other stem's mute state — releasing solo reveals
+      // whatever each of the other stems' mute states already were.
+      return {
+        ...prev,
+        soloedStemId: isAlreadySoloed ? null : stemId,
+        stems: !isAlreadySoloed && prev.stems[stemId].muted ?
+        { ...prev.stems, [stemId]: { ...prev.stems[stemId], muted: false } } :
+        prev.stems
+      };
+    });
   };
   const resetStems = () => {
     setState((prev) => ({
