@@ -10,15 +10,21 @@ import { StemId, Track, TRACKS } from '../data/mockData';
 export const STEM_DEFS: { id: StemId; label: string }[] = [
   { id: 'drums', label: 'Drums' },
   { id: 'bass', label: 'Bass' },
-  { id: 'keys', label: 'Keys' }
+  { id: 'piano', label: 'Piano' }
 ];
 type StemChannelState = { volume: number; muted: boolean };
 type StemsState = Record<StemId, StemChannelState>;
 const DEFAULT_STEMS: StemsState = {
   drums: { volume: 1, muted: false },
   bass: { volume: 1, muted: false },
-  keys: { volume: 1, muted: false }
+  piano: { volume: 1, muted: false }
 };
+// The generated stem audio (public/audio/demo-reel-*.wav) was composed at a
+// fixed 113 BPM. Real-audio playback rate is always computed relative to
+// this, not the selected track's own declared `bpm` — those can legitimately
+// differ per dance style (e.g. a Treble Jig track declares 73 BPM) while all
+// sharing this same underlying recording.
+const REAL_AUDIO_NATIVE_BPM = 113;
 function isStemAudible(stemId: StemId, stems: StemsState, soloedStemId: StemId | null) {
   if (soloedStemId) return stemId === soloedStemId;
   return !stems[stemId].muted;
@@ -182,8 +188,8 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
 
     if (beat % 4 === 0 && isStemAudible('bass', stems, soloed)) {
       playPulse(context, root, startTime, beatDuration * 0.8, 0.045 * stems.bass.volume, 'triangle');
-    } else if (beat % 4 === 2 && isStemAudible('keys', stems, soloed)) {
-      playPulse(context, fifth, startTime, beatDuration * 0.6, 0.035 * stems.keys.volume, 'triangle');
+    } else if (beat % 4 === 2 && isStemAudible('piano', stems, soloed)) {
+      playPulse(context, fifth, startTime, beatDuration * 0.6, 0.035 * stems.piano.volume, 'triangle');
     }
 
     sampleBeatRef.current = beat + 1;
@@ -285,7 +291,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       const source = context.createBufferSource();
       source.buffer = buffer;
       source.loop = true;
-      source.playbackRate.value = playbackBpm / track.bpm;
+      source.playbackRate.value = playbackBpm / REAL_AUDIO_NATIVE_BPM;
       const gain = context.createGain();
       gain.gain.value = isStemAudible(id, stems, soloed) ? stems[id].volume : 0;
       source.connect(gain);
@@ -406,7 +412,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     setState((prev) => {
       if (prev.isPlaying && prev.currentTrack && bpm) {
         if (prev.currentTrack.stemAudioUrls) {
-          const rate = bpm / prev.currentTrack.bpm;
+          const rate = bpm / REAL_AUDIO_NATIVE_BPM;
           Object.values(realStemSourcesRef.current).forEach(({ source }) => {
             source.playbackRate.value = rate;
           });

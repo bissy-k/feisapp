@@ -1,5 +1,5 @@
 // Generates an original, royalty-free reel-style demo track as three
-// separate, sample-aligned audio stems (Drums / Bass / Keys) so it can be
+// separate, sample-aligned audio stems (Drums / Bass / Piano) so it can be
 // used with the app's real stems mixer. Not a transcription of any known
 // tune — melody is procedurally composed over a simple I-IV-V progression
 // in D major, seeded for reproducibility.
@@ -57,7 +57,7 @@ function nearestChordTone(idx, tones) {
   , tones[0]);
 }
 
-// Build the melody (Keys stem) as a flat list of { freq, startSec, durSec }.
+// Build the melody (Piano stem) as a flat list of { freq, startSec, durSec }.
 const melodyNotes = [];
 let cursor = 0;
 let currentIdx = 0;
@@ -103,13 +103,13 @@ function addSamples(buffer, startSec, durSec, sampleFn) {
   }
 }
 
-// --- Keys stem: bright, quick-decay plucked melody ---
-const keysBuffer = makeBuffer();
+// --- Piano stem: bright, quick-decay plucked melody ---
+const pianoBuffer = makeBuffer();
 const NOTE_GAIN = 0.5;
 melodyNotes.forEach(({ freq, startSec, durSec }) => {
   const attack = 0.006;
   const decayRate = 3 / Math.max(durSec - attack, 0.05);
-  addSamples(keysBuffer, startSec, durSec, (t) => {
+  addSamples(pianoBuffer, startSec, durSec, (t) => {
     const env = t < attack ? t / attack : Math.exp(-(t - attack) * decayRate);
     const wave =
     Math.sin(2 * Math.PI * freq * t) +
@@ -173,7 +173,7 @@ for (let bar = 0; bar < BARS; bar += 1) {
 // boosted) — the same way real multitrack stems behave.
 let combinedPeak = 0;
 for (let i = 0; i < totalSamples; i += 1) {
-  const sum = Math.abs(keysBuffer[i] + bassBuffer[i] + drumsBuffer[i]);
+  const sum = Math.abs(pianoBuffer[i] + bassBuffer[i] + drumsBuffer[i]);
   combinedPeak = Math.max(combinedPeak, sum);
 }
 const scale = combinedPeak > 0 ? 0.9 / combinedPeak : 1;
@@ -208,5 +208,5 @@ function writeWav(filename, floatBuffer) {
 
 writeWav('demo-reel-drums.wav', drumsBuffer);
 writeWav('demo-reel-bass.wav', bassBuffer);
-writeWav('demo-reel-keys.wav', keysBuffer);
+writeWav('demo-reel-piano.wav', pianoBuffer);
 console.log(`Duration: ${totalSec.toFixed(3)}s, ${totalSamples} samples per stem`);

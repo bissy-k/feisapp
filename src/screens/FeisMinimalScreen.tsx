@@ -133,6 +133,18 @@ const PRACTICE_PRESETS: PracticePreset[] = [
   }
 ];
 
+// Every downloaded track shares this same recording so Track Stems has real,
+// audible drum/bass/piano parts to solo and mute no matter which track is
+// selected. Individual tracks keep their own declared `bpm` for style
+// realism (a Treble Jig is genuinely slower than a Reel) — playback rate is
+// computed against the recording's own native tempo, not each track's bpm,
+// so the audible speed still matches what each track's dial shows.
+const DEMO_STEM_AUDIO_URLS = {
+  drums: '/audio/demo-reel-drums.wav',
+  bass: '/audio/demo-reel-bass.wav',
+  piano: '/audio/demo-reel-piano.wav'
+};
+
 const DOWNLOADED_TRACKS: DownloadedTrack[] = [
   {
     id: 'd1',
@@ -143,8 +155,9 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 194,
     artworkColor: '#F39A3D',
     stem: 'Drums',
-    stems: ['Drums', 'Bass', 'Keys'],
-    isDownloaded: true
+    stems: ['Drums', 'Bass', 'Piano'],
+    isDownloaded: true,
+    stemAudioUrls: DEMO_STEM_AUDIO_URLS
   },
   {
     id: 'd2',
@@ -155,8 +168,9 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 208,
     artworkColor: '#E05D4F',
     stem: 'Drums',
-    stems: ['Drums', 'Bass', 'Keys'],
-    isDownloaded: true
+    stems: ['Drums', 'Bass', 'Piano'],
+    isDownloaded: true,
+    stemAudioUrls: DEMO_STEM_AUDIO_URLS
   },
   {
     id: 'd3',
@@ -167,8 +181,9 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 182,
     artworkColor: '#D7A40D',
     stem: 'Drums',
-    stems: ['Drums', 'Bass', 'Keys'],
-    isDownloaded: true
+    stems: ['Drums', 'Bass', 'Piano'],
+    isDownloaded: true,
+    stemAudioUrls: DEMO_STEM_AUDIO_URLS
   },
   {
     id: 'd4',
@@ -179,8 +194,9 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 216,
     artworkColor: '#D33F74',
     stem: 'Drums',
-    stems: ['Drums', 'Bass', 'Keys'],
-    isDownloaded: true
+    stems: ['Drums', 'Bass', 'Piano'],
+    isDownloaded: true,
+    stemAudioUrls: DEMO_STEM_AUDIO_URLS
   },
   {
     id: 'd5',
@@ -191,8 +207,9 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 238,
     artworkColor: '#49A47A',
     stem: 'Drums',
-    stems: ['Drums', 'Bass', 'Keys'],
-    isDownloaded: true
+    stems: ['Drums', 'Bass', 'Piano'],
+    isDownloaded: true,
+    stemAudioUrls: DEMO_STEM_AUDIO_URLS
   },
   {
     id: 'd6',
@@ -203,25 +220,9 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
     duration: 205,
     artworkColor: '#6B58D6',
     stem: 'Drums',
-    stems: ['Drums', 'Bass', 'Keys'],
-    isDownloaded: true
-  },
-  {
-    id: 'd7',
-    title: 'Sample Reel (Real Audio)',
-    artist: 'Original Demo Composition',
-    styleId: 'reel',
-    bpm: 113,
-    duration: 34,
-    artworkColor: '#2A9D8F',
-    stem: 'Drums',
-    stems: ['Drums', 'Bass', 'Keys'],
+    stems: ['Drums', 'Bass', 'Piano'],
     isDownloaded: true,
-    stemAudioUrls: {
-      drums: '/audio/demo-reel-drums.wav',
-      bass: '/audio/demo-reel-bass.wav',
-      keys: '/audio/demo-reel-keys.wav'
-    }
+    stemAudioUrls: DEMO_STEM_AUDIO_URLS
   }
 ];
 
@@ -231,7 +232,7 @@ const DOWNLOADED_PLAYLISTS: DownloadedPlaylist[] = [
     name: 'Downloaded Tracks',
     count: 31,
     coverColor: '#D9D9D9',
-    trackIds: ['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']
+    trackIds: ['d1', 'd2', 'd3', 'd4', 'd5', 'd6']
   },
   {
     id: 'favourites',
@@ -382,7 +383,7 @@ export function FeisMinimalScreen({
   `${STEM_DEFS.find(({ id }) => id === soloedStemId)?.label} solo` :
   activeStemCount < STEM_DEFS.length ?
   `${activeStemCount}/${STEM_DEFS.length} active` :
-  'Drums, Bass, Keys';
+  STEM_DEFS.map(({ label }) => label).join(', ');
   const metronomeBeatLabel =
   METRONOME_BEAT_OPTIONS.find((option) => option.value === sound)?.label ?? 'Woodchip';
   const isCustomTempo = hasSelection && defaultBpm > 0 && bpm !== defaultBpm;

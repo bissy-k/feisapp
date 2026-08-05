@@ -8,7 +8,7 @@ export type DanceStyle = {
   color: string;
 };
 
-export type StemId = 'drums' | 'bass' | 'keys';
+export type StemId = 'drums' | 'bass' | 'piano';
 
 export type Track = {
   id: string;
