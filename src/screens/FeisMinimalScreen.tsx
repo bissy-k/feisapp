@@ -1532,32 +1532,7 @@ function StemsMixerPanel({
 }) {
   return (
     <PickerSheet title="Stems mixer" onClose={onClose} closeIcon>
-      <div
-        className="flex items-center gap-3 px-4 pb-3 mb-1 border-b"
-        style={{ borderColor: BORDER, opacity: disabled ? 0.45 : 1 }}>
-
-        <button
-          onClick={onTogglePlayPause}
-          disabled={disabled}
-          aria-label={isPlaying ? 'Pause' : 'Play'}
-          className="w-9 h-9 rounded-full flex items-center justify-center text-white flex-shrink-0 active:scale-95 transition-transform"
-          style={{ backgroundColor: ACCENT }}>
-
-          {isPlaying ?
-          <Pause size={16} fill="currentColor" /> :
-
-          <Play size={16} fill="currentColor" className="ml-0.5" />
-          }
-        </button>
-        <span className="w-8 text-right text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
-          {formatTime(currentTime)}
-        </span>
-        <TrackScrubber progress={progress} onSeek={onSeek} accentColor={ACCENT} />
-        <span className="w-8 text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
-          {formatTime(duration)}
-        </span>
-      </div>
-      <div className="grid grid-cols-3 gap-2.5 px-4 pt-2 pb-5">
+      <div className="grid grid-cols-3 gap-2.5 px-4 pt-2 pb-4">
         {STEM_DEFS.map(({ id, label }) => {
           const channel = stems[id];
           const isSoloed = soloedStemId === id;
@@ -1581,35 +1556,37 @@ function StemsMixerPanel({
                   disabled={disabled}
                   accentColor={ACCENT}
                   label={`${label} volume`}
-                  height={124} />
+                  height={150} />
 
               </div>
-              <div className="flex flex-col gap-1.5 w-full">
+              <div className="flex flex-col gap-1.5 items-center">
                 <button
                   onClick={() => onToggleSolo(id)}
                   disabled={disabled}
                   aria-pressed={isSoloed}
                   aria-label={`Solo ${label}`}
-                  className="h-8 rounded-lg text-[12px] font-bold transition-colors"
+                  className="h-7 min-w-[64px] px-3 rounded-full text-[12px] font-medium transition-colors border"
                   style={{
-                    backgroundColor: isSoloed ? ACCENT : '#F0EBE8',
+                    backgroundColor: isSoloed ? ACCENT : 'transparent',
+                    borderColor: isSoloed ? ACCENT : BORDER,
                     color: isSoloed ? '#FFFFFF' : TEXT_SECONDARY
                   }}>
 
-                  Solo
+                  solo
                 </button>
                 <button
                   onClick={() => onToggleMute(id)}
                   disabled={disabled}
                   aria-pressed={channel.muted}
                   aria-label={`Mute ${label}`}
-                  className="h-8 rounded-lg text-[12px] font-bold transition-colors"
+                  className="h-7 min-w-[64px] px-3 rounded-full text-[12px] font-medium transition-colors border"
                   style={{
-                    backgroundColor: channel.muted ? ACCENT : '#F0EBE8',
+                    backgroundColor: channel.muted ? ACCENT : 'transparent',
+                    borderColor: channel.muted ? ACCENT : BORDER,
                     color: channel.muted ? '#FFFFFF' : TEXT_SECONDARY
                   }}>
 
-                  Mute
+                  mute
                 </button>
               </div>
               <span className="mt-2 text-[10px] leading-3 h-3" style={{ color: TEXT_TERTIARY }}>
@@ -1618,6 +1595,31 @@ function StemsMixerPanel({
             </div>);
 
         })}
+      </div>
+      <div
+        className="flex items-center gap-3 px-4 pt-3 pb-1 border-t"
+        style={{ borderColor: BORDER, opacity: disabled ? 0.45 : 1 }}>
+
+        <button
+          onClick={onTogglePlayPause}
+          disabled={disabled}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          className="w-9 h-9 rounded-full flex items-center justify-center text-white flex-shrink-0 active:scale-95 transition-transform"
+          style={{ backgroundColor: ACCENT }}>
+
+          {isPlaying ?
+          <Pause size={16} fill="currentColor" /> :
+
+          <Play size={16} fill="currentColor" className="ml-0.5" />
+          }
+        </button>
+        <span className="w-8 text-right text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
+          {formatTime(currentTime)}
+        </span>
+        <TrackScrubber progress={progress} onSeek={onSeek} accentColor={ACCENT} />
+        <span className="w-8 text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
+          {formatTime(duration)}
+        </span>
       </div>
     </PickerSheet>);
 

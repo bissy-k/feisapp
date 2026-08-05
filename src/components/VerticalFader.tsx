@@ -11,8 +11,8 @@ interface VerticalFaderProps {
 }
 
 const TRACK_WIDTH = 4;
-const CAP_WIDTH = 26;
-const CAP_HEIGHT = 12;
+const CAP_WIDTH = 28;
+const CAP_HEIGHT = 44;
 
 export function VerticalFader({
   value,
@@ -120,23 +120,14 @@ export function VerticalFader({
         }} />
 
       <div
-        className={`absolute left-1/2 -translate-x-1/2 rounded-full bg-white transition-transform ${isDragging ? 'scale-110' : ''}`}
+        className={`absolute left-1/2 -translate-x-1/2 rounded-full bg-white transition-transform ${isDragging ? 'scale-105' : ''}`}
         style={{
           bottom: capBottom,
           width: CAP_WIDTH,
           height: CAP_HEIGHT,
           boxShadow: '0 3px 8px rgba(80, 56, 49, 0.2), 0 1px 2px rgba(80, 56, 49, 0.14)'
-        }}>
+        }} />
 
-        <div
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{
-            width: CAP_WIDTH - 8,
-            height: 2,
-            backgroundColor: accentColor
-          }} />
-
-      </div>
     </div>);
 
 }
