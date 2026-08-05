@@ -322,3 +322,73 @@ export const PLAYLISTS: Playlist[] = [
 
 export const RECENTLY_PLAYED_IDS = ['t1', 't5', 't11', 't9'];
 export const RECOMMENDED_IDS = ['t2', 't4', 't6', 't12'];
+export const FEATURED_IDS = ['t3', 't17', 't20', 't18'];
+
+export type DanceLevel = {
+  id: string;
+  name: string;
+  gaelicName: string;
+  color: string;
+  totalSegments: number;
+  filledSegments: number;
+};
+
+export const DANCE_LEVELS: DanceLevel[] = [
+{
+  id: 'novice-beginner',
+  name: 'Novice & Beginner',
+  gaelicName: 'Bun Grád',
+  color: '#EF4444',
+  totalSegments: 4,
+  filledSegments: 1
+},
+{
+  id: 'primary',
+  name: 'Primary',
+  gaelicName: 'Tús Grád',
+  color: '#8B5CF6',
+  totalSegments: 4,
+  filledSegments: 2
+},
+{
+  id: 'intermediate',
+  name: 'Intermediate',
+  gaelicName: 'Meán Grád',
+  color: '#F59E0B',
+  totalSegments: 4,
+  filledSegments: 3
+},
+{
+  id: 'open',
+  name: 'Open',
+  gaelicName: 'Ard Grád',
+  color: '#10B981',
+  totalSegments: 4,
+  filledSegments: 4
+}];
+
+
+export type Artist = {
+  id: string;
+  name: string;
+  color: string;
+};
+
+export const ARTISTS: Artist[] = [
+{ id: 'a1', name: "Brian O'Sullivan", color: '#F59E0B' },
+{ id: 'a2', name: 'Sean Mortalo', color: '#3B82F6' },
+{ id: 'a3', name: "Seamus O'Shea", color: '#EF4444' },
+{ id: 'a4', name: 'Deirdre Ní Bhriain', color: '#8B5CF6' },
+{ id: 'a5', name: 'Trad Collective', color: '#10B981' }];
+
+
+export type MusicCategory = {
+  id: string;
+  name: string;
+  color: string;
+};
+
+export const OTHER_MUSIC_CATEGORIES: MusicCategory[] = [
+{ id: 'presentation', name: 'Presentation Music', color: '#0D9488' },
+{ id: 'meditation', name: 'Meditation & Focus', color: '#0EA5E9' },
+{ id: 'warmup', name: 'Warm-Up Music', color: '#F59E0B' }];
