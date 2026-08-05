@@ -1445,7 +1445,7 @@ function PickerSheet({
         
         <div className="w-9 h-[5px] bg-[rgba(60,60,67,0.3)] rounded-full mx-auto mt-[12px] mb-[10px]" />
         <div
-          className="min-h-[58px] px-4 flex items-start justify-between pb-4 border-b"
+          className="min-h-[58px] px-4 flex items-center justify-between pb-3 border-b"
           style={{
             borderColor: 'rgba(60,60,67,0.36)'
           }}>
@@ -1531,7 +1531,7 @@ function StemsMixerPanel({
   onSeek?: (progress: number) => void;
 }) {
   return (
-    <PickerSheet title="Stems mixer" onClose={onClose} closeIcon>
+    <PickerSheet title="Track Stems" onClose={onClose} closeIcon>
       <div className="grid grid-cols-3 gap-2.5 px-4 pt-2 pb-4">
         {STEM_DEFS.map(({ id, label }) => {
           const channel = stems[id];
