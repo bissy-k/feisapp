@@ -10,6 +10,7 @@ import {
   Plus,
   Volume1,
   Volume2,
+  VolumeX,
   X
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
@@ -66,6 +67,8 @@ const TEXT_PRIMARY = '#333333';
 const TEXT_SECONDARY = '#666666';
 const TEXT_TERTIARY = '#595959';
 const BORDER = '#D0D5DD';
+const STEM_TOGGLE_BG = '#F8E1DB';
+const MUTED_FADER_COLOR = '#B9B2AC';
 const METRONOME_BEAT_OPTIONS: MetronomeBeatOption[] = [
   {
     value: 'beep',
@@ -134,7 +137,7 @@ const PRACTICE_PRESETS: PracticePreset[] = [
 ];
 
 // Every downloaded track shares this same recording so Track Stems has real,
-// audible drum/bass/piano parts to solo and mute no matter which track is
+// audible drum/bass/piano parts to mute no matter which track is
 // selected. Individual tracks keep their own declared `bpm` for style
 // realism (a Treble Jig is genuinely slower than a Reel) — playback rate is
 // computed against the recording's own native tempo, not each track's bpm,
@@ -306,10 +309,8 @@ export function FeisMinimalScreen({
     currentTime,
     seek,
     stems,
-    soloedStemId,
     setStemVolume,
     toggleStemMute,
-    toggleStemSolo,
     resetStems
   } = usePlayer();
 
@@ -375,12 +376,8 @@ export function FeisMinimalScreen({
   const isSelectedTrackLoaded = currentTrack?.id === selectedTrack?.id;
   const selectedTrackProgress = isSelectedTrackLoaded ? progress : 0;
   const selectedTrackTime = isSelectedTrackLoaded ? currentTime : 0;
-  const activeStemCount = STEM_DEFS.filter(({ id }) =>
-  soloedStemId ? id === soloedStemId : !stems[id].muted
-  ).length;
+  const activeStemCount = STEM_DEFS.filter(({ id }) => !stems[id].muted).length;
   const stemsSummaryLabel =
-  soloedStemId ?
-  `${STEM_DEFS.find(({ id }) => id === soloedStemId)?.label} solo` :
   activeStemCount < STEM_DEFS.length ?
   `${activeStemCount}/${STEM_DEFS.length} active` :
   STEM_DEFS.map(({ label }) => label).join(', ');
@@ -944,11 +941,9 @@ export function FeisMinimalScreen({
         <StemsMixerPanel
           onClose={() => setShowStemsMixer(false)}
           stems={stems}
-          soloedStemId={soloedStemId}
           disabled={!hasSelection}
           onVolumeChange={setStemVolume}
           onToggleMute={toggleStemMute}
-          onToggleSolo={toggleStemSolo}
           isPlaying={sessionState === 'running'}
           onTogglePlayPause={handlePrimaryAction}
           progress={selectedTrackProgress}
@@ -1505,11 +1500,9 @@ function Radio({ checked }: {checked: boolean;}) {
 function StemsMixerPanel({
   onClose,
   stems,
-  soloedStemId,
   disabled,
   onVolumeChange,
   onToggleMute,
-  onToggleSolo,
   isPlaying,
   onTogglePlayPause,
   progress,
@@ -1519,11 +1512,9 @@ function StemsMixerPanel({
 }: {
   onClose: () => void;
   stems: Record<StemId, {volume: number;muted: boolean;}>;
-  soloedStemId: StemId | null;
   disabled: boolean;
   onVolumeChange: (stemId: StemId, volume: number) => void;
   onToggleMute: (stemId: StemId) => void;
-  onToggleSolo: (stemId: StemId) => void;
   isPlaying: boolean;
   onTogglePlayPause: () => void;
   progress: number;
@@ -1532,12 +1523,10 @@ function StemsMixerPanel({
   onSeek?: (progress: number) => void;
 }) {
   return (
-    <PickerSheet title="Track Stems" onClose={onClose} closeIcon>
+    <PickerSheet title="Track stems" onClose={onClose} closeIcon>
       <div className="grid grid-cols-3 gap-2.5 px-4 pt-2 pb-4">
         {STEM_DEFS.map(({ id, label }) => {
           const channel = stems[id];
-          const isSoloed = soloedStemId === id;
-          const isAudible = soloedStemId ? isSoloed : !channel.muted;
           return (
             <div
               key={id}
@@ -1555,44 +1544,25 @@ function StemsMixerPanel({
                   value={channel.volume}
                   onChange={(volume) => onVolumeChange(id, volume)}
                   disabled={disabled}
-                  accentColor={ACCENT}
+                  accentColor={channel.muted ? MUTED_FADER_COLOR : ACCENT}
                   label={`${label} volume`}
                   height={150} />
 
               </div>
-              <div className="flex flex-col gap-1.5 items-center">
-                <button
-                  onClick={() => onToggleSolo(id)}
-                  disabled={disabled}
-                  aria-pressed={isSoloed}
-                  aria-label={`Solo ${label}`}
-                  className="h-7 min-w-[64px] px-3 rounded-full text-[12px] font-medium transition-colors border"
-                  style={{
-                    backgroundColor: isSoloed ? ACCENT : 'transparent',
-                    borderColor: isSoloed ? ACCENT : BORDER,
-                    color: isSoloed ? '#FFFFFF' : TEXT_SECONDARY
-                  }}>
+              <button
+                onClick={() => onToggleMute(id)}
+                disabled={disabled}
+                aria-pressed={channel.muted}
+                aria-label={channel.muted ? `Unmute ${label}` : `Mute ${label}`}
+                className="w-14 h-14 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+                style={{ backgroundColor: STEM_TOGGLE_BG }}>
 
-                  solo
-                </button>
-                <button
-                  onClick={() => onToggleMute(id)}
-                  disabled={disabled}
-                  aria-pressed={channel.muted}
-                  aria-label={`Mute ${label}`}
-                  className="h-7 min-w-[64px] px-3 rounded-full text-[12px] font-medium transition-colors border"
-                  style={{
-                    backgroundColor: channel.muted ? ACCENT : 'transparent',
-                    borderColor: channel.muted ? ACCENT : BORDER,
-                    color: channel.muted ? '#FFFFFF' : TEXT_SECONDARY
-                  }}>
+                {channel.muted ?
+                <VolumeX size={22} style={{ color: ACCENT }} /> :
 
-                  mute
-                </button>
-              </div>
-              <span className="mt-2 text-[10px] leading-3 h-3" style={{ color: TEXT_TERTIARY }}>
-                {!isAudible ? 'Silent' : ''}
-              </span>
+                <Volume2 size={22} style={{ color: ACCENT }} />
+                }
+              </button>
             </div>);
 
         })}

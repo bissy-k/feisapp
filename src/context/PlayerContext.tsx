@@ -25,8 +25,7 @@ const DEFAULT_STEMS: StemsState = {
 // differ per dance style (e.g. a Treble Jig track declares 73 BPM) while all
 // sharing this same underlying recording.
 const REAL_AUDIO_NATIVE_BPM = 113;
-function isStemAudible(stemId: StemId, stems: StemsState, soloedStemId: StemId | null) {
-  if (soloedStemId) return stemId === soloedStemId;
+function isStemAudible(stemId: StemId, stems: StemsState) {
   return !stems[stemId].muted;
 }
 
@@ -41,7 +40,6 @@ type PlayerState = {
   loopEnd: number; // 0 to 1
   favorites: string[];
   stems: StemsState;
-  soloedStemId: StemId | null;
 };
 type PlayerContextType = PlayerState & {
   playTrack: (track: Track) => void;
@@ -56,7 +54,6 @@ type PlayerContextType = PlayerState & {
   toggleFavorite: (trackId: string) => void;
   setStemVolume: (stemId: StemId, volume: number) => void;
   toggleStemMute: (stemId: StemId) => void;
-  toggleStemSolo: (stemId: StemId) => void;
   resetStems: () => void;
 };
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -71,15 +68,13 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     loopStart: 0,
     loopEnd: 1,
     favorites: ['t1', 't5'], // Mock initial favorites
-    stems: DEFAULT_STEMS,
-    soloedStemId: null
+    stems: DEFAULT_STEMS
   });
   const progressInterval = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sampleIntervalRef = useRef<number | null>(null);
   const sampleBeatRef = useRef(0);
   const stemsRef = useRef<StemsState>(DEFAULT_STEMS);
-  const soloedStemIdRef = useRef<StemId | null>(null);
   const audioBufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
   const realStemSourcesRef = useRef<
     Partial<Record<StemId, { source: AudioBufferSourceNode; gain: GainNode }>>>(
@@ -90,9 +85,6 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
   useEffect(() => {
     stemsRef.current = state.stems;
   }, [state.stems]);
-  useEffect(() => {
-    soloedStemIdRef.current = state.soloedStemId;
-  }, [state.soloedStemId]);
 
   // Keep any currently-playing real stem audio in sync with mixer changes,
   // so the same stems mixer UI that gates the synthesized layers also
@@ -101,10 +93,10 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     STEM_DEFS.forEach(({ id }) => {
       const entry = realStemSourcesRef.current[id];
       if (!entry) return;
-      const audible = isStemAudible(id, state.stems, state.soloedStemId);
+      const audible = isStemAudible(id, state.stems);
       entry.gain.gain.value = audible ? state.stems[id].volume : 0;
     });
-  }, [state.stems, state.soloedStemId]);
+  }, [state.stems]);
 
   const getAudioContext = () => {
     if (!audioContextRef.current) {
@@ -171,9 +163,8 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     const root = 146.83;
     const fifth = 220;
     const stems = stemsRef.current;
-    const soloed = soloedStemIdRef.current;
 
-    if (isStemAudible('drums', stems, soloed)) {
+    if (isStemAudible('drums', stems)) {
       const v = stems.drums.volume;
       if (beat % 4 === 0) {
         playPulse(context, 72, startTime, 0.18, 0.18 * v, 'sine');
@@ -186,9 +177,9 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       playPulse(context, 1320, startTime + beatDuration / 2, 0.035, 0.018 * v, 'square');
     }
 
-    if (beat % 4 === 0 && isStemAudible('bass', stems, soloed)) {
+    if (beat % 4 === 0 && isStemAudible('bass', stems)) {
       playPulse(context, root, startTime, beatDuration * 0.8, 0.045 * stems.bass.volume, 'triangle');
-    } else if (beat % 4 === 2 && isStemAudible('piano', stems, soloed)) {
+    } else if (beat % 4 === 2 && isStemAudible('piano', stems)) {
       playPulse(context, fifth, startTime, beatDuration * 0.6, 0.035 * stems.piano.volume, 'triangle');
     }
 
@@ -281,7 +272,6 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     if (resetOffset) realStartOffsetRef.current = 0;
 
     const stems = stemsRef.current;
-    const soloed = soloedStemIdRef.current;
     const referenceBuffer = Object.values(buffers)[0] as AudioBuffer;
     const offset = realStartOffsetRef.current % referenceBuffer.duration;
 
@@ -293,7 +283,7 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
       source.loop = true;
       source.playbackRate.value = playbackBpm / REAL_AUDIO_NATIVE_BPM;
       const gain = context.createGain();
-      gain.gain.value = isStemAudible(id, stems, soloed) ? stems[id].volume : 0;
+      gain.gain.value = isStemAudible(id, stems) ? stems[id].volume : 0;
       source.connect(gain);
       gain.connect(context.destination);
       source.start(0, offset);
@@ -497,46 +487,18 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
     }));
   };
   const toggleStemMute = (stemId: StemId) => {
-    setState((prev) => {
-      // Solo and Mute are mutually exclusive per stem: a stem is either
-      // Default, Muted, or Soloed, never Muted-and-Soloed at once. If this
-      // stem is currently the soloed one, Mute takes over from Solo instead
-      // of layering on top of it.
-      const wasSoloed = prev.soloedStemId === stemId;
-      return {
-        ...prev,
-        soloedStemId: wasSoloed ? null : prev.soloedStemId,
-        stems: {
-          ...prev.stems,
-          [stemId]: {
-            ...prev.stems[stemId],
-            muted: wasSoloed ? true : !prev.stems[stemId].muted
-          }
-        }
-      };
-    });
-  };
-  const toggleStemSolo = (stemId: StemId) => {
-    setState((prev) => {
-      const isAlreadySoloed = prev.soloedStemId === stemId;
-      // Only one stem can be soloed at a time. Soloing a stem clears that
-      // same stem's own `muted` flag (mutual exclusivity, same as above) but
-      // never touches any other stem's mute state — releasing solo reveals
-      // whatever each of the other stems' mute states already were.
-      return {
-        ...prev,
-        soloedStemId: isAlreadySoloed ? null : stemId,
-        stems: !isAlreadySoloed && prev.stems[stemId].muted ?
-        { ...prev.stems, [stemId]: { ...prev.stems[stemId], muted: false } } :
-        prev.stems
-      };
-    });
+    setState((prev) => ({
+      ...prev,
+      stems: {
+        ...prev.stems,
+        [stemId]: { ...prev.stems[stemId], muted: !prev.stems[stemId].muted }
+      }
+    }));
   };
   const resetStems = () => {
     setState((prev) => ({
       ...prev,
-      stems: DEFAULT_STEMS,
-      soloedStemId: null
+      stems: DEFAULT_STEMS
     }));
   };
   return (
@@ -555,7 +517,6 @@ export function PlayerProvider({ children }: {children: React.ReactNode;}) {
         toggleFavorite,
         setStemVolume,
         toggleStemMute,
-        toggleStemSolo,
         resetStems
       }}>
       
