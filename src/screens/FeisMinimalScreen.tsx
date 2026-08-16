@@ -289,6 +289,7 @@ export function FeisMinimalScreen({
     currentBeat,
     volume,
     setVolume,
+    isMuted,
     setIsMuted,
     sound,
     setSound
@@ -669,14 +670,26 @@ export function FeisMinimalScreen({
             style={{
               opacity: hasSelection ? 1 : 0.45
             }}>
-            <Volume1 size={20} strokeWidth={2} style={{ color: ACCENT }} />
+            <button
+              onClick={() => {
+                if (hasSelection) setIsMuted(!isMuted);
+              }}
+              disabled={!hasSelection}
+              className={`p-2 -m-2 flex-shrink-0 focus:outline-none ${hasSelection ? '' : 'cursor-not-allowed'}`}
+              aria-pressed={isMuted}
+              aria-label={isMuted ? 'Unmute metronome' : 'Mute metronome'}>
+              {isMuted ?
+              <VolumeX size={20} strokeWidth={2} style={{ color: ACCENT }} /> :
+              <Volume1 size={20} strokeWidth={2} style={{ color: ACCENT }} />
+              }
+            </button>
             <div className="relative h-8 flex-1 flex items-center">
               <div className="absolute left-0 right-0 h-[5px] rounded-full" style={{ backgroundColor: '#E6E1DE' }} />
               <div
                 className="absolute left-0 h-[5px] rounded-full"
                 style={{
                   width: `${Math.round(volume * 100)}%`,
-                  backgroundColor: ACCENT
+                  backgroundColor: isMuted ? MUTED_FADER_COLOR : ACCENT
                 }} />
               <div
                 className="absolute top-1/2 h-7 w-7 -translate-y-1/2 rounded-full bg-white"
@@ -753,7 +766,7 @@ export function FeisMinimalScreen({
         }
 
         <div
-          className="mt-4 px-4"
+          className="mt-2 px-4"
           style={{
             opacity: hasSelection ? 1 : 0.45
           }}>
