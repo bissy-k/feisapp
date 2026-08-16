@@ -63,14 +63,14 @@ export function RotaryDial({
   const valueAngle = START_ANGLE + Math.min(progress * SWEEP, 359.9);
   const center = size / 2;
 
-  // Layered outside-in: tick marks at the rim, a slim progress ring just
-  // inside them, then the flat white face with the thumb riding the ring.
-  const tickOuterRadius = center - size * 0.015;
-  const tickMinorLength = size * 0.026;
-  const tickMajorLength = size * 0.05;
-  const ringStrokeWidth = Math.max(14, size * 0.062);
-  const ringRadius = tickOuterRadius - tickMajorLength - ringStrokeWidth / 2 - size * 0.03;
-  const innerInset = ringRadius - ringStrokeWidth / 2 - size * 0.03;
+  // Layered outside-in: the thick progress ring sits at the rim, a band of
+  // tick marks just inside it, then the flat white face at the center.
+  const ringStrokeWidth = Math.max(24, size * 0.125);
+  const ringRadius = center - ringStrokeWidth / 2 - size * 0.012;
+  const ringInnerEdge = ringRadius - ringStrokeWidth / 2;
+  const tickOuterRadius = ringInnerEdge - size * 0.02;
+  const tickLength = size * 0.032;
+  const innerInset = center - (tickOuterRadius - tickLength - size * 0.018);
 
   const progressPath = describeArc(center, ringRadius, START_ANGLE, valueAngle);
   const railPath = describeArc(center, ringRadius, START_ANGLE, START_ANGLE + 359.9);
@@ -161,10 +161,8 @@ export function RotaryDial({
       ;(e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {}
   };
-  // 60 minor ticks (every 6°, clock-minute spacing), with a longer major
-  // tick every 5th position (12 majors, every 30°, clock-hour spacing).
-  const tickCount = 60;
-  const majorEvery = 5;
+  // Uniform tick ring, clock-minute spacing.
+  const tickCount = 48;
   const ticks = Array.from({ length: tickCount }, (_, i) => i);
   const knob = polarToCartesian(center, ringRadius, valueAngle);
 
@@ -197,11 +195,6 @@ export function RotaryDial({
         }
       }}>
 
-      {/* Flat warm-gray bezel */}
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{ backgroundColor: '#EDE7E2' }} />
-
       <svg width={size} height={size} className="absolute inset-0 pointer-events-none overflow-visible">
         <defs>
           <linearGradient id="premiumDialArc" x1="0" y1="0" x2="1" y2="1">
@@ -211,32 +204,10 @@ export function RotaryDial({
           </linearGradient>
         </defs>
 
-        {/* Tick marks — full circle, warm neutral, active portion tinted accent */}
-        {ticks.map((i) => {
-          const angle = START_ANGLE + i / tickCount * 360;
-          const isMajor = i % majorEvery === 0;
-          const length = isMajor ? tickMajorLength : tickMinorLength;
-          const isActiveTick = angle <= valueAngle;
-          const outer = polarToCartesian(center, tickOuterRadius, angle);
-          const inner = polarToCartesian(center, tickOuterRadius - length, angle);
-          return (
-            <line
-              key={i}
-              x1={outer.x}
-              y1={outer.y}
-              x2={inner.x}
-              y2={inner.y}
-              stroke={isActiveTick ? accentColor : '#C9C1B9'}
-              strokeOpacity={isActiveTick ? 0.55 : 1}
-              strokeWidth={isMajor ? 2.2 : 1.3}
-              strokeLinecap="round" />);
-
-        })}
-
         <path
           d={railPath}
           fill="none"
-          stroke="#FFFFFF"
+          stroke="#E4DFDA"
           strokeWidth={ringStrokeWidth}
           strokeLinecap="round" />
         <motion.path
@@ -248,6 +219,24 @@ export function RotaryDial({
           animate={isPlaying ? { strokeWidth: [ringStrokeWidth, isAccent ? ringStrokeWidth + 3 : ringStrokeWidth + 2, ringStrokeWidth] } : { strokeWidth: ringStrokeWidth }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
           key={`arc-pulse-${beatPulseKey}`} />
+
+        {/* Tick marks — uniform ring nested inside the progress ring */}
+        {ticks.map((i) => {
+          const angle = START_ANGLE + i / tickCount * 360;
+          const outer = polarToCartesian(center, tickOuterRadius, angle);
+          const inner = polarToCartesian(center, tickOuterRadius - tickLength, angle);
+          return (
+            <line
+              key={i}
+              x1={outer.x}
+              y1={outer.y}
+              x2={inner.x}
+              y2={inner.y}
+              stroke="#8A8580"
+              strokeWidth={1.5}
+              strokeLinecap="round" />);
+
+        })}
       </svg>
 
       {isPlaying &&
@@ -255,7 +244,7 @@ export function RotaryDial({
         key={`beat-ripple-${beatPulseKey}`}
         className="absolute rounded-full pointer-events-none"
         style={{
-          inset: 14,
+          inset: Math.max(0, innerInset - 10),
           border: `1.5px solid ${accentColor}`
         }}
         initial={{ opacity: isAccent ? 0.28 : 0.16, scale: 0.95 }}
