@@ -63,9 +63,10 @@ export function RotaryDial({
   const valueAngle = START_ANGLE + Math.min(progress * SWEEP, 359.9);
   const center = size / 2;
 
-  // Layered outside-in: the thick progress ring sits at the rim, a band of
-  // tick marks just inside it, then the flat white face at the center.
-  const ringStrokeWidth = Math.max(24, size * 0.125);
+  // Layered outside-in: the progress ring sits at the rim, a band of tick
+  // marks just inside it, then the flat cream face at the center. Ring
+  // thickness matches spec: 28px stroke on a 504px frame = 5.56% of size.
+  const ringStrokeWidth = Math.max(12, size * (28 / 504));
   const ringRadius = center - ringStrokeWidth / 2 - size * 0.012;
   const ringInnerEdge = ringRadius - ringStrokeWidth / 2;
   const tickOuterRadius = ringInnerEdge - size * 0.02;
@@ -173,7 +174,7 @@ export function RotaryDial({
       style={{
         width: size,
         height: size,
-        filter: isDragging ? `drop-shadow(0 10px 20px ${accentColor}2E)` : 'drop-shadow(0 8px 18px rgba(77, 43, 35, 0.08))'
+        filter: isDragging ? `drop-shadow(0 10px 20px ${accentColor}2E)` : 'none'
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -196,24 +197,16 @@ export function RotaryDial({
       }}>
 
       <svg width={size} height={size} className="absolute inset-0 pointer-events-none overflow-visible">
-        <defs>
-          <linearGradient id="premiumDialArc" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#F4987F" />
-            <stop offset="55%" stopColor={accentColor} />
-            <stop offset="100%" stopColor="#C85A45" />
-          </linearGradient>
-        </defs>
-
         <path
           d={railPath}
           fill="none"
-          stroke="#E4DFDA"
+          stroke="#EAECF0"
           strokeWidth={ringStrokeWidth}
           strokeLinecap="round" />
         <motion.path
           d={progressPath}
           fill="none"
-          stroke="url(#premiumDialArc)"
+          stroke={accentColor}
           strokeWidth={ringStrokeWidth}
           strokeLinecap="round"
           animate={isPlaying ? { strokeWidth: [ringStrokeWidth, isAccent ? ringStrokeWidth + 3 : ringStrokeWidth + 2, ringStrokeWidth] } : { strokeWidth: ringStrokeWidth }}
@@ -232,7 +225,7 @@ export function RotaryDial({
               y1={outer.y}
               x2={inner.x}
               y2={inner.y}
-              stroke="#8A8580"
+              stroke="#98A2B3"
               strokeWidth={1.5}
               strokeLinecap="round" />);
 
@@ -253,13 +246,14 @@ export function RotaryDial({
       }
 
       <motion.div
-        className="absolute pointer-events-none rounded-full bg-white"
+        className="absolute pointer-events-none rounded-full"
         style={{
           left: knob.x - 20,
           top: knob.y - 20,
           width: 40,
           height: 40,
-          boxShadow: `0 4px 10px rgba(91, 50, 45, 0.18), 0 0 0 1px ${accentColor}33`
+          backgroundColor: '#FBF6F3',
+          boxShadow: '0 0.5px 4px 0 rgba(0, 0, 0, 0.12), 0 6px 13px 0 rgba(0, 0, 0, 0.12)'
         }}
         animate={{
           scale: isDragging ? 1.08 : isPlaying && isAccent ? [1, 1.05, 1] : 1
@@ -271,7 +265,7 @@ export function RotaryDial({
         style={{
           inset: innerInset,
           pointerEvents: 'none',
-          boxShadow: '0 2px 8px rgba(78, 54, 47, 0.07)'
+          boxShadow: '0 8px 8px rgba(16, 24, 40, 0.03), 0 20px 24px rgba(16, 24, 40, 0.08)'
         }}
         animate={isPlaying ? { scale: [1, isAccent ? 1.02 : 1.01, 1] } : { scale: 1 }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
