@@ -261,11 +261,6 @@ function signatureToBeats(signature: string) {
   return 4;
 }
 
-function defaultBeatsForSignature(signature: string | undefined) {
-  if (!signature || signature === 'Varies') return null;
-  return signatureToBeats(signature);
-}
-
 function formatBpm(value: number) {
   return `${value} BPM`;
 }
@@ -323,7 +318,6 @@ export function FeisMinimalScreen({
     null
   );
   const [showSelectionSheet, setShowSelectionSheet] = useState(false);
-  const [showTimeSigPicker, setShowTimeSigPicker] = useState(false);
   const [showStemsMixer, setShowStemsMixer] = useState(false);
   const [showBeatSoundPicker, setShowBeatSoundPicker] = useState(false);
   const [selectionView, setSelectionView] = useState<SelectionView>('root');
@@ -384,9 +378,6 @@ export function FeisMinimalScreen({
   const metronomeBeatLabel =
   METRONOME_BEAT_OPTIONS.find((option) => option.value === sound)?.label ?? 'Woodchip';
   const isCustomTempo = hasSelection && defaultBpm > 0 && bpm !== defaultBpm;
-  const defaultTimeSignatureBeats = defaultBeatsForSignature(
-    selectedPreset?.timeSignature ?? selectedStyle?.timeSignature
-  );
   const settingsTopClass = selectedTrack ? 'mt-4' : hasSelection ? 'mt-9' : 'mt-4';
 
   useEffect(() => {
@@ -647,51 +638,7 @@ export function FeisMinimalScreen({
           style={{
           backgroundColor: CARD_BG
           }}>
-          
-          {selectedTrack && selectedTrack.stems.length > 0 &&
-          <>
-              <button
-              onClick={() => setShowStemsMixer(true)}
-              className="w-full h-[53px] px-4 flex items-center justify-between active:bg-neutral-50 focus:outline-none"
-              aria-label="Open stems mixer">
 
-                <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
-                  Track stems
-                </span>
-                <span className="flex items-center gap-1 text-[12px] leading-4 tracking-[0.5px]" style={{ color: TEXT_TERTIARY }}>
-                  {stemsSummaryLabel}
-                  <ChevronRight size={16} style={{ color: ACCENT }} />
-                </span>
-              </button>
-              <div className="h-px" style={{ backgroundColor: BORDER }} />
-            </>
-          }
-
-          <button
-            onClick={() => {
-              if (hasSelection) setShowTimeSigPicker(true);
-            }}
-            disabled={!hasSelection}
-            className={`w-full h-[53px] px-4 flex items-center justify-between focus:outline-none ${hasSelection ? 'active:bg-neutral-50' : 'cursor-not-allowed'}`}
-            style={{
-              opacity: hasSelection ? 1 : 0.45
-            }}
-            aria-label="Change time signature">
-            
-            <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
-              Time signature
-            </span>
-            <span
-              className="flex items-center gap-1 text-[12px] leading-4 tracking-[0.5px]"
-              style={{
-                color: TEXT_TERTIARY
-              }}>
-              
-              {timeSignatureLabel}
-              <ChevronRight size={16} style={{ color: hasSelection ? ACCENT : TEXT_TERTIARY }} />
-            </span>
-          </button>
-          <div className="h-px" style={{ backgroundColor: BORDER }} />
           <button
             onClick={() => {
               if (hasSelection) setShowBeatSoundPicker(true);
@@ -702,7 +649,7 @@ export function FeisMinimalScreen({
               opacity: hasSelection ? 1 : 0.45
             }}
             aria-label="Change metronome beat sound">
-            
+
             <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
               Metronome beats
             </span>
@@ -711,7 +658,7 @@ export function FeisMinimalScreen({
               style={{
                 color: TEXT_TERTIARY
               }}>
-              
+
               {metronomeBeatLabel}
               <ChevronRight size={16} style={{ color: hasSelection ? ACCENT : TEXT_TERTIARY }} />
             </span>
@@ -774,12 +721,45 @@ export function FeisMinimalScreen({
               }}
               aria-pressed={accentFirstBeat}
               aria-label="Toggle accent first beat">
-              
+
               <span
                 className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${accentFirstBeat ? 'left-[18px]' : 'left-0.5'}`} />
-              
+
             </button>
           </div>
+        </div>
+
+        {selectedTrack && selectedTrack.stems.length > 0 &&
+        <div
+          className="mt-4 rounded-xl overflow-hidden shadow-sm"
+          style={{
+          backgroundColor: CARD_BG
+          }}>
+
+          <button
+            onClick={() => setShowStemsMixer(true)}
+            className="w-full h-[53px] px-4 flex items-center justify-between active:bg-neutral-50 focus:outline-none"
+            aria-label="Open stems mixer">
+
+            <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
+              Track stems
+            </span>
+            <span className="flex items-center gap-1 text-[12px] leading-4 tracking-[0.5px]" style={{ color: TEXT_TERTIARY }}>
+              {stemsSummaryLabel}
+              <ChevronRight size={16} style={{ color: ACCENT }} />
+            </span>
+          </button>
+        </div>
+        }
+
+        <div
+          className="mt-4 px-4"
+          style={{
+            opacity: hasSelection ? 1 : 0.45
+          }}>
+          <span className="text-[12px] leading-[18px]" style={{ color: TEXT_TERTIARY }}>
+            Time signature of the current track is {timeSignatureLabel}.
+          </span>
         </div>
         </>
         }
@@ -841,63 +821,6 @@ export function FeisMinimalScreen({
           }}
           onSelectPreset={handlePresetSelect}
           onSelectTrack={handleTrackSelect} />
-        }
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showTimeSigPicker &&
-        <PickerSheet
-          title="Time signature"
-          onClose={() => setShowTimeSigPicker(false)}>
-          
-          <div className="px-4 py-3">
-            <div className="rounded-xl overflow-hidden bg-white">
-            {[
-          {
-            label: '2/4',
-            beats: 2
-          },
-          {
-            label: '3/4',
-            beats: 3
-          },
-          {
-            label: '4/4',
-            beats: 4
-          },
-          {
-            label: '6/8',
-            beats: 6
-          },
-          {
-            label: '9/8',
-            beats: 9
-          }].
-          map((opt) => {
-            const isActive = beatsPerMeasure === opt.beats;
-            const isDefault = defaultTimeSignatureBeats === opt.beats;
-            return (
-              <button
-                key={opt.label}
-                onClick={() => {
-                  setBeatsPerMeasure(opt.beats);
-                  setShowTimeSigPicker(false);
-                }}
-                className="w-full h-[53px] px-4 flex items-center gap-4 text-left border-b last:border-b-0 active:bg-neutral-50 focus:outline-none"
-                style={{
-                  borderColor: BORDER
-                }}>
-                
-                <Radio checked={isActive} />
-                <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
-                  {opt.label}{isDefault ? ' (default)' : ''}
-                </span>
-              </button>);
-
-          })}
-            </div>
-          </div>
-          </PickerSheet>
         }
       </AnimatePresence>
 
@@ -1183,7 +1106,7 @@ function PracticeSelectionCard({
         <ChevronRight size={16} style={{ color: ACCENT }} />
       </button>
       <div className="mt-[7px] flex items-center gap-[3px]">
-        <span className="w-[30px] text-right text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
+        <span className="w-[30px] text-right text-[12px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
             {formatTime(isScrubbing ? scrubProgress * selectedTrack.duration : currentTime)}
         </span>
         <div
@@ -1220,7 +1143,7 @@ function PracticeSelectionCard({
             }} />
           }
         </div>
-        <span className="w-[30px] text-right text-[10px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
+        <span className="w-[30px] text-right text-[12px] leading-3 tabular-nums" style={{ color: TEXT_TERTIARY }}>
           {formatTime(selectedTrack.duration)}
         </span>
       </div>
