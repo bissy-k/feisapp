@@ -6,11 +6,20 @@ interface TrackRowProps {
   track: Track;
   index?: number;
   showArtwork?: boolean;
+  // Set to false to render a display-only row with no tap/press affordance
+  // and no "more options" button — used on static screens like Home.
+  interactive?: boolean;
 }
-export function TrackRow({ track, index, showArtwork = true }: TrackRowProps) {
+export function TrackRow({
+  track,
+  index,
+  showArtwork = true,
+  interactive = true
+}: TrackRowProps) {
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = usePlayer();
   const isCurrent = currentTrack?.id === track.id;
   const handlePlay = () => {
+    if (!interactive) return;
     if (isCurrent) {
       togglePlayPause();
     } else {
@@ -24,9 +33,9 @@ export function TrackRow({ track, index, showArtwork = true }: TrackRowProps) {
   };
   return (
     <div
-      onClick={handlePlay}
-      className="flex items-center gap-3 py-2 px-4 active:bg-neutral-100 transition-colors cursor-pointer group">
-      
+      onClick={interactive ? handlePlay : undefined}
+      className={`flex items-center gap-3 py-2 px-4 transition-colors group ${interactive ? 'active:bg-neutral-100 cursor-pointer' : ''}`}>
+
       {index !== undefined && !showArtwork &&
       <span className="text-[15px] font-medium text-neutral-400 w-6 text-center">
           {isCurrent && isPlaying ?
@@ -77,12 +86,14 @@ export function TrackRow({ track, index, showArtwork = true }: TrackRowProps) {
         <span className="text-[13px] text-neutral-400">
           {formatDuration(track.duration)}
         </span>
+        {interactive &&
         <button
           className="p-1 text-neutral-400 active:text-neutral-900"
           onClick={(e) => e.stopPropagation()}>
-          
+
           <MoreHorizontal size={20} />
         </button>
+        }
       </div>
     </div>);
 

@@ -42,17 +42,22 @@ export function BottomTabs({ activeTab, onChange }: BottomTabsProps) {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = tab.id !== null && activeTab === tab.id;
+          // Only Tempo is navigable right now, to keep focus on that
+          // feature and avoid confusion over other unfinished sections.
+          const isEnabled = tab.id === 'practice';
           const selectTab = () => {
-            if (tab.id) onChange(tab.id);
+            if (isEnabled && tab.id) onChange(tab.id);
           };
           return (
             <button
               type="button"
               key={tab.label}
+              disabled={!isEnabled}
+              aria-disabled={!isEnabled}
               onPointerDown={selectTab}
               onClick={selectTab}
-              className="flex flex-col items-center justify-center flex-1 gap-1 relative pt-0">
-              
+              className={`flex flex-col items-center justify-center flex-1 gap-1 relative pt-0 ${isEnabled ? '' : 'opacity-40 cursor-not-allowed'}`}>
+
               <div className="relative">
                 <Icon
                   size={20}
@@ -61,7 +66,7 @@ export function BottomTabs({ activeTab, onChange }: BottomTabsProps) {
               </div>
               <span
                 className={`text-[10px] font-semibold tracking-[-0.24px] transition-colors duration-200 ${isActive ? 'text-[#E56D56]' : 'text-[#666666]'}`}>
-                
+
                 {tab.label}
               </span>
             </button>);

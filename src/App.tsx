@@ -42,15 +42,8 @@ function AppContent() {
             'none'
           }}>
           
-          <HomeScreen
-            onNavigateToSearch={() => setIsSearchOpen(true)}
-            onNavigateToStyle={handleNavigateToStyle}
-            onNavigateToPractice={() => setActiveTab('practice')}
-            onOpenFeis={(presetId) => {
-              setFeisInitialPresetId(presetId ?? null);
-              setIsFeisOpen(true);
-            }} />
-          
+          <HomeScreen />
+
         </div>
 
         <div
