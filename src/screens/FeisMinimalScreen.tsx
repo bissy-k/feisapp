@@ -712,7 +712,6 @@ export function FeisMinimalScreen({
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
                 aria-label="Metronome beat volume" />
             </div>
-            <Volume2 size={20} strokeWidth={2} style={{ color: ACCENT }} />
           </div>
           <div className="h-px" style={{ backgroundColor: BORDER }} />
           <div
