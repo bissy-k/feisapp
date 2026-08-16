@@ -679,10 +679,10 @@ export function FeisMinimalScreen({
                   backgroundColor: ACCENT
                 }} />
               <div
-                className="absolute top-1/2 h-9 w-9 -translate-y-1/2 rounded-2xl bg-white"
+                className="absolute top-1/2 h-7 w-7 -translate-y-1/2 rounded-full bg-white"
                 style={{
-                  left: `calc(${Math.round(volume * 100)}% - 18px)`,
-                  boxShadow: '0 5px 12px rgba(80, 56, 49, 0.18), 0 1px 2px rgba(80, 56, 49, 0.12)'
+                  left: `calc(${Math.round(volume * 100)}% - 14px)`,
+                  boxShadow: '0 3px 8px rgba(80, 56, 49, 0.16), 0 1px 2px rgba(80, 56, 49, 0.1)'
                 }} />
               <input
                 type="range"
