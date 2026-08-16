@@ -29,6 +29,11 @@ function describeArc(center: number, radius: number, startAngle: number, endAngl
   return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
 }
 
+// Full-circle sweep starting at 12 o'clock. -90° = top in this coordinate
+// system (0° = 3 o'clock, 90° = 6 o'clock).
+const START_ANGLE = -90;
+const SWEEP = 360;
+
 /**
  * Drag-to-rotate dial. Drag anywhere on the ring/circle to scrub BPM up or down.
  * Treats vertical AND angular drag as input — most natural for a thumb on phone.
@@ -52,15 +57,24 @@ export function RotaryDial({
   const lastHapticAtRef = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
   const range = max - min;
-  // Map current value to a 270° arc starting at -135° (bottom-left) sweeping to +135° (bottom-right)
-  const valueAngle = -135 + (value - min) / range * 270;
+  const progress = Math.min(1, Math.max(0, (value - min) / range));
+  // Clamp just under a full lap so the arc's start/end points never
+  // coincide — an SVG `A` command can't render a true 360° circle.
+  const valueAngle = START_ANGLE + Math.min(progress * SWEEP, 359.9);
   const center = size / 2;
-  const ringStrokeWidth = Math.max(22, size * 0.092);
-  const ringRadius = center - ringStrokeWidth - 16;
-  const tickRadius = ringRadius + ringStrokeWidth * 0.28;
-  const progressPath = describeArc(center, ringRadius, -135, valueAngle);
-  const railPath = describeArc(center, ringRadius, -135, 135);
-  const innerInset = Math.max(54, size * 0.25);
+
+  // Layered outside-in: tick marks at the rim, a slim progress ring just
+  // inside them, then the flat white face with the thumb riding the ring.
+  const tickOuterRadius = center - size * 0.015;
+  const tickMinorLength = size * 0.026;
+  const tickMajorLength = size * 0.05;
+  const ringStrokeWidth = Math.max(14, size * 0.062);
+  const ringRadius = tickOuterRadius - tickMajorLength - ringStrokeWidth / 2 - size * 0.03;
+  const innerInset = ringRadius - ringStrokeWidth / 2 - size * 0.03;
+
+  const progressPath = describeArc(center, ringRadius, START_ANGLE, valueAngle);
+  const railPath = describeArc(center, ringRadius, START_ANGLE, START_ANGLE + 359.9);
+
   const getAngle = useCallback((clientX: number, clientY: number) => {
     if (!containerRef.current) return 0;
     const rect = containerRef.current.getBoundingClientRect();
@@ -126,8 +140,8 @@ export function RotaryDial({
     if (delta > 180) delta -= 360;
     if (delta < -180) delta += 360;
     lastAngleRef.current = angle;
-    // Sensitivity: 270° of rotation = full range
-    const bpmDelta = delta / 270 * range;
+    // Sensitivity: one full lap of the dial (360°) = full range
+    const bpmDelta = delta / SWEEP * range;
     accumulatedRef.current += bpmDelta;
     if (Math.abs(accumulatedRef.current) >= step) {
       const change = Math.trunc(accumulatedRef.current / step) * step;
@@ -147,7 +161,10 @@ export function RotaryDial({
       ;(e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {}
   };
-  const tickCount = 12;
+  // 60 minor ticks (every 6°, clock-minute spacing), with a longer major
+  // tick every 5th position (12 majors, every 30°, clock-hour spacing).
+  const tickCount = 60;
+  const majorEvery = 5;
   const ticks = Array.from({ length: tickCount }, (_, i) => i);
   const knob = polarToCartesian(center, ringRadius, valueAngle);
 
@@ -158,7 +175,7 @@ export function RotaryDial({
       style={{
         width: size,
         height: size,
-        filter: isDragging ? `drop-shadow(0 18px 34px ${accentColor}33)` : 'drop-shadow(0 20px 34px rgba(77, 43, 35, 0.12))'
+        filter: isDragging ? `drop-shadow(0 10px 20px ${accentColor}2E)` : 'drop-shadow(0 8px 18px rgba(77, 43, 35, 0.08))'
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -179,111 +196,84 @@ export function RotaryDial({
           triggerHaptic();
         }
       }}>
+
+      {/* Flat warm-gray bezel */}
       <div
         className="absolute inset-0 rounded-full"
-        style={{
-          background: 'linear-gradient(145deg, rgba(255,255,255,0.96), rgba(246,239,235,0.72))',
-          boxShadow: '18px 22px 36px rgba(66, 42, 35, 0.13), -12px -12px 28px rgba(255, 255, 255, 0.95), inset 9px 10px 24px rgba(146, 112, 102, 0.10), inset -10px -10px 22px rgba(255, 255, 255, 0.88)'
-        }} />
-
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          inset: 34,
-          background: 'radial-gradient(circle at 42% 34%, #FFFFFF 0%, #FFFDFB 50%, #F2EDEA 100%)',
-          boxShadow: 'inset 10px 12px 24px rgba(80, 56, 49, 0.11), inset -14px -16px 26px rgba(255,255,255,0.95), 0 16px 30px rgba(89, 57, 50, 0.10)'
-        }}
-        animate={isPlaying ? { scale: [1, isAccent ? 1.025 : 1.012, 1] } : { scale: 1 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
-        key={beatPulseKey} />
-
-      {isPlaying &&
-      <motion.div
-        key={`beat-ripple-${beatPulseKey}`}
-        className="absolute rounded-full pointer-events-none"
-        style={{
-          inset: 18,
-          border: `2px solid ${accentColor}`,
-          boxShadow: `0 0 26px ${accentColor}44`
-        }}
-        initial={{ opacity: isAccent ? 0.32 : 0.2, scale: 0.92 }}
-        animate={{ opacity: 0, scale: isAccent ? 1.13 : 1.08 }}
-        transition={{ duration: isAccent ? 0.46 : 0.34, ease: 'easeOut' }} />
-      }
+        style={{ backgroundColor: '#EDE7E2' }} />
 
       <svg width={size} height={size} className="absolute inset-0 pointer-events-none overflow-visible">
         <defs>
           <linearGradient id="premiumDialArc" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#FF9E8D" />
-            <stop offset="48%" stopColor={accentColor} />
-            <stop offset="100%" stopColor="#D84E70" />
+            <stop offset="0%" stopColor="#F4987F" />
+            <stop offset="55%" stopColor={accentColor} />
+            <stop offset="100%" stopColor="#C85A45" />
           </linearGradient>
-          <filter id="premiumArcShadow" x="-40%" y="-40%" width="180%" height="180%">
-            <feDropShadow dx="0" dy="10" stdDeviation="8" floodColor={accentColor} floodOpacity="0.28" />
-            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#6F3B34" floodOpacity="0.16" />
-          </filter>
         </defs>
+
+        {/* Tick marks — full circle, warm neutral, active portion tinted accent */}
+        {ticks.map((i) => {
+          const angle = START_ANGLE + i / tickCount * 360;
+          const isMajor = i % majorEvery === 0;
+          const length = isMajor ? tickMajorLength : tickMinorLength;
+          const isActiveTick = angle <= valueAngle;
+          const outer = polarToCartesian(center, tickOuterRadius, angle);
+          const inner = polarToCartesian(center, tickOuterRadius - length, angle);
+          return (
+            <line
+              key={i}
+              x1={outer.x}
+              y1={outer.y}
+              x2={inner.x}
+              y2={inner.y}
+              stroke={isActiveTick ? accentColor : '#C9C1B9'}
+              strokeOpacity={isActiveTick ? 0.55 : 1}
+              strokeWidth={isMajor ? 2.2 : 1.3}
+              strokeLinecap="round" />);
+
+        })}
 
         <path
           d={railPath}
           fill="none"
-          stroke="#EEE7E4"
+          stroke="#FFFFFF"
           strokeWidth={ringStrokeWidth}
           strokeLinecap="round" />
-        <path
-          d={railPath}
-          fill="none"
-          stroke="#FFFFFF"
-          strokeWidth={ringStrokeWidth - 8}
-          strokeLinecap="round"
-          strokeOpacity="0.68" />
         <motion.path
           d={progressPath}
           fill="none"
           stroke="url(#premiumDialArc)"
           strokeWidth={ringStrokeWidth}
           strokeLinecap="round"
-          filter="url(#premiumArcShadow)"
-          animate={isPlaying ? { strokeWidth: [ringStrokeWidth, isAccent ? ringStrokeWidth + 5 : ringStrokeWidth + 3, ringStrokeWidth] } : { strokeWidth: ringStrokeWidth }}
-          transition={{ duration: 0.22, ease: 'easeOut' }}
+          animate={isPlaying ? { strokeWidth: [ringStrokeWidth, isAccent ? ringStrokeWidth + 3 : ringStrokeWidth + 2, ringStrokeWidth] } : { strokeWidth: ringStrokeWidth }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
           key={`arc-pulse-${beatPulseKey}`} />
-
-        {ticks.map((i) => {
-          const angle = -135 + i / (tickCount - 1) * 270;
-          const point = polarToCartesian(center, tickRadius, angle);
-          const isActiveTick = angle <= valueAngle;
-          return (
-            <circle
-              key={i}
-              cx={point.x}
-              cy={point.y}
-              r={3.1}
-              fill={isActiveTick ? accentColor : '#5E5552'}
-              opacity={isActiveTick ? 0.48 : 0.5} />
-          );
-        })}
       </svg>
 
-      {isDragging &&
-      <div
-        className="absolute inset-0 rounded-full"
+      {isPlaying &&
+      <motion.div
+        key={`beat-ripple-${beatPulseKey}`}
+        className="absolute rounded-full pointer-events-none"
         style={{
-          boxShadow: `0 0 0 8px ${accentColor}18, 0 18px 42px ${accentColor}33`
-        }} />
+          inset: 14,
+          border: `1.5px solid ${accentColor}`
+        }}
+        initial={{ opacity: isAccent ? 0.28 : 0.16, scale: 0.95 }}
+        animate={{ opacity: 0, scale: isAccent ? 1.06 : 1.03 }}
+        transition={{ duration: isAccent ? 0.4 : 0.3, ease: 'easeOut' }} />
       }
 
       <motion.div
         className="absolute pointer-events-none rounded-full bg-white"
         style={{
-          left: knob.x - 22,
-          top: knob.y - 22,
-          width: 44,
-          height: 44,
-          border: '1px solid rgba(255,255,255,0.9)',
-          boxShadow: `0 13px 20px rgba(91, 50, 45, 0.24), 0 3px 4px ${accentColor}66, inset 0 2px 5px rgba(255,255,255,0.95), inset 0 -4px 8px rgba(91,50,45,0.10)`
+          left: knob.x - 20,
+          top: knob.y - 20,
+          width: 40,
+          height: 40,
+          boxShadow: `0 4px 10px rgba(91, 50, 45, 0.18), 0 0 0 1px ${accentColor}33`
         }}
         animate={{
-          scale: isDragging ? 1.08 : isPlaying && isAccent ? [1, 1.06, 1] : 1
+          scale: isDragging ? 1.08 : isPlaying && isAccent ? [1, 1.05, 1] : 1
         }}
         transition={{ duration: 0.18, ease: 'easeOut' }} />
 
@@ -292,9 +282,9 @@ export function RotaryDial({
         style={{
           inset: innerInset,
           pointerEvents: 'none',
-          boxShadow: '0 18px 28px rgba(78, 54, 47, 0.12), inset 0 1px 1px rgba(255,255,255,0.9)'
+          boxShadow: '0 2px 8px rgba(78, 54, 47, 0.07)'
         }}
-        animate={isPlaying ? { scale: [1, isAccent ? 1.035 : 1.018, 1] } : { scale: 1 }}
+        animate={isPlaying ? { scale: [1, isAccent ? 1.02 : 1.01, 1] } : { scale: 1 }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
         key={`center-pulse-${beatPulseKey}`}>
         {children}
