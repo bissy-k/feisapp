@@ -794,7 +794,7 @@ export function FeisMinimalScreen({
             color: ACCENT,
             boxShadow: '0 10px 24px rgba(80, 56, 49, 0.06)'
           }}
-          aria-label="Cancel practice session">
+          aria-label="Cancel tempo session">
 
           Cancel
         </button>
@@ -805,7 +805,7 @@ export function FeisMinimalScreen({
             backgroundColor: ACCENT,
             boxShadow: '0 14px 28px rgba(229, 109, 86, 0.24)'
           }}
-          aria-label={`${primaryActionLabel.toLowerCase()} practice session`}>
+          aria-label={`${primaryActionLabel.toLowerCase()} tempo session`}>
           
           {primaryActionLabel}
         </button>
@@ -1037,7 +1037,7 @@ function PracticeSelectionCard({
           backgroundColor: 'transparent',
           border: `1.5px dashed ${BORDER}`
         }}
-        aria-label="Choose practice preset or downloaded track">
+        aria-label="Choose a preset tempo or downloaded track">
         
         <div className="flex flex-col items-center gap-4">
           <div className="relative h-6 w-6" style={{ color: ACCENT }}>
@@ -1051,7 +1051,7 @@ function PracticeSelectionCard({
 
           <div className="w-full max-w-[260px]">
             <div className="text-[16px] font-semibold leading-5 tracking-[-0.27px]" style={{ color: '#1C170D' }}>
-              Choose your practice
+              Choose your tempo
             </div>
             <div className="text-[12px] font-medium leading-[18px] mt-1" style={{ color: TEXT_SECONDARY }}>
               Start with a preset tempo or a downloaded track.
@@ -1193,7 +1193,7 @@ function SelectionSheet({
 
   const title =
   view === 'root' ?
-  'Choose your practice' :
+  'Choose your tempo' :
   view === 'playlists' ?
   'Playlists' :
   'Choose a track';
