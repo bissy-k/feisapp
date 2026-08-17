@@ -80,7 +80,7 @@ const METRONOME_BEAT_OPTIONS: MetronomeBeatOption[] = [
   },
   {
     value: 'woodblock',
-    label: 'Woodchip'
+    label: 'Woodblock'
   }
 ];
 
@@ -232,22 +232,22 @@ const DOWNLOADED_TRACKS: DownloadedTrack[] = [
 const DOWNLOADED_PLAYLISTS: DownloadedPlaylist[] = [
   {
     id: 'downloaded',
-    name: 'Downloaded Tracks',
-    count: 31,
+    name: 'All Downloads',
+    count: 6,
     coverColor: '#D9D9D9',
     trackIds: ['d1', 'd2', 'd3', 'd4', 'd5', 'd6']
   },
   {
     id: 'favourites',
-    name: 'My Favourites',
-    count: 11,
+    name: 'My Favorites',
+    count: 3,
     coverColor: '#5E6673',
     trackIds: ['d2', 'd4', 'd6']
   },
   {
     id: 'practice',
-    name: 'Practice playlist',
-    count: 20,
+    name: 'Practice Playlist',
+    count: 3,
     coverColor: '#CFCFCF',
     trackIds: ['d1', 'd3', 'd5']
   }
@@ -377,7 +377,7 @@ export function FeisMinimalScreen({
   `${activeStemCount}/${STEM_DEFS.length} active` :
   STEM_DEFS.map(({ label }) => label).join(', ');
   const metronomeBeatLabel =
-  METRONOME_BEAT_OPTIONS.find((option) => option.value === sound)?.label ?? 'Woodchip';
+  METRONOME_BEAT_OPTIONS.find((option) => option.value === sound)?.label ?? 'Woodblock';
   const isCustomTempo = hasSelection && defaultBpm > 0 && bpm !== defaultBpm;
   const settingsTopClass = selectedTrack ? 'mt-4' : hasSelection ? 'mt-9' : 'mt-4';
 
@@ -652,7 +652,7 @@ export function FeisMinimalScreen({
             aria-label="Change metronome beat sound">
 
             <span className="text-[14px] font-medium leading-[22px]" style={{ color: TEXT_PRIMARY }}>
-              Metronome beats
+              Metronome sound
             </span>
             <span
               className="flex items-center gap-1 text-[12px] leading-4 tracking-[0.5px]"
@@ -770,7 +770,7 @@ export function FeisMinimalScreen({
             opacity: hasSelection ? 1 : 0.45
           }}>
           <span className="text-[12px] leading-[18px]" style={{ color: TEXT_TERTIARY }}>
-            Time signature of the current track is {timeSignatureLabel}.
+            Time signature: {timeSignatureLabel}
           </span>
         </div>
         </>
@@ -794,8 +794,8 @@ export function FeisMinimalScreen({
             color: ACCENT,
             boxShadow: '0 10px 24px rgba(80, 56, 49, 0.06)'
           }}
-          aria-label="Cancel metronome session">
-          
+          aria-label="Cancel practice session">
+
           Cancel
         </button>
         <button
@@ -805,7 +805,7 @@ export function FeisMinimalScreen({
             backgroundColor: ACCENT,
             boxShadow: '0 14px 28px rgba(229, 109, 86, 0.24)'
           }}
-          aria-label={`${primaryActionLabel.toLowerCase()} metronome session`}>
+          aria-label={`${primaryActionLabel.toLowerCase()} practice session`}>
           
           {primaryActionLabel}
         </button>
@@ -839,7 +839,7 @@ export function FeisMinimalScreen({
       <AnimatePresence>
         {showBeatSoundPicker &&
         <PickerSheet
-          title="Metronome beats"
+          title="Metronome sound"
           onClose={() => setShowBeatSoundPicker(false)}>
           
           <div className="px-4 py-3">
@@ -1064,7 +1064,7 @@ function PracticeSelectionCard({
               backgroundColor: ACCENT,
               boxShadow: '0 20px 24px -4px rgba(16, 24, 40, 0.08), 0 8px 8px -4px rgba(16, 24, 40, 0.03)'
             }}>
-            Select
+            Get started
           </span>
         </div>
       </motion.button>);
@@ -1195,14 +1195,12 @@ function SelectionSheet({
   view === 'root' ?
   'Choose your practice' :
   view === 'playlists' ?
-  'Downloaded tracks' :
+  'Playlists' :
   'Choose a track';
 
   const subtitle =
   view === 'playlists' ?
   'Pick from music saved on this device.' :
-  view === 'tracks' ?
-  'Choose one track for this practice session.' :
   undefined;
 
   return (
@@ -1458,7 +1456,11 @@ function StemsMixerPanel({
   onSeek?: (progress: number) => void;
 }) {
   return (
-    <PickerSheet title="Track stems" onClose={onClose} closeIcon>
+    <PickerSheet
+      title="Track stems"
+      subtitle="Turn individual instruments up, down, or off."
+      onClose={onClose}
+      closeIcon>
       <div className="grid grid-cols-3 gap-2.5 px-4 pt-2 pb-4">
         {STEM_DEFS.map(({ id, label }) => {
           const channel = stems[id];
