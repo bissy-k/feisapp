@@ -238,10 +238,10 @@ export function RotaryDial({
         className="absolute rounded-full pointer-events-none"
         style={{
           inset: Math.max(0, innerInset - 10),
-          border: `1.5px solid ${accentColor}`
+          border: `2px solid #FFA94D`
         }}
-        initial={{ opacity: isAccent ? 0.28 : 0.16, scale: 0.95 }}
-        animate={{ opacity: 0, scale: isAccent ? 1.06 : 1.03 }}
+        initial={{ opacity: isAccent ? 0.6 : 0.42, scale: 0.95 }}
+        animate={{ opacity: 0, scale: isAccent ? 1.08 : 1.05 }}
         transition={{ duration: isAccent ? 0.4 : 0.3, ease: 'easeOut' }} />
       }
 
