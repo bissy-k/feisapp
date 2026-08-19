@@ -1051,10 +1051,7 @@ function PracticeSelectionCard({
 
           <div className="w-full max-w-[260px]">
             <div className="text-[16px] font-semibold leading-5 tracking-[-0.27px]" style={{ color: '#1C170D' }}>
-              Choose your tempo
-            </div>
-            <div className="text-[12px] font-medium leading-[18px] mt-1" style={{ color: TEXT_SECONDARY }}>
-              Start with a preset tempo or a downloaded track.
+              Choose a preset tempo or downloaded track
             </div>
           </div>
 
@@ -1064,7 +1061,7 @@ function PracticeSelectionCard({
               backgroundColor: ACCENT,
               boxShadow: '0 20px 24px -4px rgba(16, 24, 40, 0.08), 0 8px 8px -4px rgba(16, 24, 40, 0.03)'
             }}>
-            Get started
+            Select
           </span>
         </div>
       </motion.button>);
@@ -1227,7 +1224,7 @@ function SelectionSheet({
               <Plus size={22} />
             </span>
             <span className="text-[14px] font-semibold" style={{ color: ACCENT }}>
-              Browse downloaded tracks
+              Select a downloaded track
             </span>
           </button>
 
